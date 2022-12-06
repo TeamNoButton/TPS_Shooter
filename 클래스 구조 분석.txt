@@ -1,0 +1,73 @@
+playercontroller.cpp
+
+
+아이템 구조체 = ID, 갯수 정보, 레벨 정보
+슬롯 구조체 = 아이템 타입, 슬롯숫자
+게임 저장 클래스 = 인벤, 슬롯, 유저ID 정보
+
+ARPGPlayerControllerBase::AddInventoryItem -> 구 아이템 정보 -> 신 아이템 정보 -> 업데이트 -> 클라이언트 전송 -> 슬롯 최대 최소 계산-> 인벤토리 정보 저장;
+{
+	아이템 정보 가져오기{
+		//인라인 함수를 통한 참조 값으로 정보 가져옴
+		FORCEINLINE const ValueType* Find(KeyConstPointerType Key) const
+		{
+			return const_cast<TMapBase*>(this)->Find(Key);
+		}
+	
+	}
+	아이템 정보 수정하기{
+		가져온 아이템 정보 + 새로운 아이템의 생성자 값 으로 정보 갱신
+		아이템 레벨은 유지
+	}
+
+	구 데이터 != 신 데이터
+	인벤토리 데이터 베이스 수정-> 클라이언트로 데이터 배포
+	인벤토리 저장
+}
+
+bool ARPGPlayerControllerBase::RemoveInventoryItem->지울 아이템의 정보를 가져옴->아이템의 정보 수정-> 클라이언트로 데이터 전송->인벤토리저장
+bool ARPGPlayerControllerBase::SaveInventory() -> 저장 상태를 가져옴 ->  리셋 후 현재 월드의 상태를 저장 -> 데이터 파일로 저장
+bool ARPGPlayerControllerBase::LoadInventory() -> 현재 월드의 아이템, 슬롯 정보 리셋 -> 파일에 저장된 정보를 가져옴 (Begin play에서 호출)
+
+
+캐릭터 정보 
+ 체력, 최대 체력, 마나, 최대 마나, 이동 속도, 현재 캐릭터 레벨, 캐릭터 레벨 변경, 스킬 슬롯, 쿨타임 계산, 받은 데미지 계산
+
+
+
+
+UE TArray
+
+
+UE Priority queue : 
+
+struct MyType
+{
+    explicit MyType(int32 InPriority);
+
+    int32 Priority;
+};
+
+struct MyTypePredicate
+{
+    bool operator()(const MyType& A, const MyType& B) const
+    {
+        // Inverted compared to std::priority_queue - higher priorities float to the top
+        return A.Priority > B.Priority;
+    }
+};
+
+TArray<MyType> Queue;
+Queue.HeapPush(MyType(10), MyTypePredicate());
+Queue.HeapPush(MyType(5),  MyTypePredicate());
+Queue.HeapPush(MyType(20), MyTypePredicate());
+Queue.HeapPush(MyType(15), MyTypePredicate());
+
+MyType Next;
+Queue.HeapPop(Next, MyTypePredicate());
+check(Next.Priority == 20);
+
+
+
+
+
