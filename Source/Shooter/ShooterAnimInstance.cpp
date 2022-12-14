@@ -45,6 +45,11 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 			LastMovementOffsetYaw = MovementOffsetYaw;
 		}
 
+<<<<<<< HEAD
+=======
+		bAiming = ShooterCharacter->GetAiming();
+
+>>>>>>> branch/#1
 		/*
 		FString RotationMessage =
 			FString::Printf(
