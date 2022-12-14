@@ -9,14 +9,6 @@
 #include "Sound/SoundCue.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "DrawDebugHelpers.h"
-<<<<<<< HEAD
-#include "Particles/ParticleSystemComponent.h"
-
-// Sets default values
-AShooterCharacter::AShooterCharacter() :
-	BaseTurnRate(45.f),
-	BaseLookUpRate(45.f)
-=======
 #include "Item.h"
 #include "Weapon.h"
 #include "Particles/ParticleSystemComponent.h"
@@ -61,7 +53,6 @@ AShooterCharacter::AShooterCharacter() :
 	bFiringBullet(false),
 	bShouldTraceForItems(false)
 	
->>>>>>> branch/#1
 {
 
 
@@ -71,15 +62,11 @@ AShooterCharacter::AShooterCharacter() :
 	// Create a camera boom (pulls in towards the character if there is a collision) 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")); // 실제 탬플릿 타입에 해당하는 서브 오브젝트를 설정한 이름으로 생성하여 반환
 	CameraBoom->SetupAttachment(RootComponent);
-<<<<<<< HEAD
-	CameraBoom->TargetArmLength = 300.f; // The camera follows at this distance behind the character
-	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on controller
-	CameraBoom->SocketOffset = FVector(0.f, 50.f, 50.f);
-=======
+
 	CameraBoom->TargetArmLength = 180.f; // The camera follows at this distance behind the character
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on controller
 	CameraBoom->SocketOffset = FVector(0.f, 50.f, 70.f);
->>>>>>> branch/#1
+
 
 
 	// Create a follow camera
@@ -105,8 +92,7 @@ void AShooterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-<<<<<<< HEAD
-=======
+
 	if (FollowCamera)
 	{
 		CameraDefaultFOV = GetFollowCamera()->FieldOfView;
@@ -115,7 +101,7 @@ void AShooterCharacter::BeginPlay()
 	EquipWeapon(SpawnDefaultWeapon());
 	
 
->>>>>>> branch/#1
+
 	/*** UE_LOG 사용법 ***/
 	//UE_LOG(LogTemp, Warning, TEXT("BeginPlay() called!"));
 	//
@@ -187,8 +173,6 @@ void AShooterCharacter::LookUpAtRate(float Rate)
 
 }
 
-<<<<<<< HEAD
-=======
 void AShooterCharacter::Turn(float Value)
 {
 	float TurnScaleFactor{};
@@ -217,7 +201,7 @@ void AShooterCharacter::LookUp(float Value)
 	AddControllerPitchInput(Value * LookUpScaleFactor);
 }
 
->>>>>>> branch/#1
+
 void AShooterCharacter::FireWeapon()
 {
 	if (FireSound)
@@ -235,14 +219,11 @@ void AShooterCharacter::FireWeapon()
 		}
 
 		FVector BeamEnd;
-<<<<<<< HEAD
-		bool bBeamEnd = GetBeamEndLocation(
-			SocketTransform.GetLocation(), BeamEnd);
-=======
+
 		FHitResult HitResult;
 		bool bBeamEnd = GetBeamEndLocation(
 			SocketTransform.GetLocation(), HitResult);
->>>>>>> branch/#1
+
 		if (bBeamEnd)
 		{
 			if (ImpactParticles)
@@ -264,11 +245,9 @@ void AShooterCharacter::FireWeapon()
 				}
 			}
 		}
-<<<<<<< HEAD
-=======
 
 
->>>>>>> branch/#1
+
 		/*
 		FHitResult FireHit;
 		const FVector Start{ SocketTransform.GetLocation() };
@@ -308,21 +287,15 @@ void AShooterCharacter::FireWeapon()
 		AnimInstance->Montage_Play(HipFireMontage);
 		AnimInstance->Montage_JumpToSection(FName("StartFire"));
 	}
-<<<<<<< HEAD
-=======
+
 
 	// Start bullet fire timer for crosshairs
 	StartCrosshairBulletFire();
->>>>>>> branch/#1
+
 }
 
 bool AShooterCharacter::GetBeamEndLocation(
 	const FVector& MuzzleSocketLocation,
-<<<<<<< HEAD
-	FVector& OutBeamLocation)
-{
-	// Get current size of the viewport
-=======
 	FHitResult& OutHitResult)
 {
 	FVector OutBeamLocation;
@@ -490,7 +463,6 @@ bool AShooterCharacter::TraceUnderCrosshairs(
 	FVector& OutHitLocation)
 {
 	// Get Viewport Size
->>>>>>> branch/#1
 	FVector2D ViewportSize;
 	if (GEngine && GEngine->GameViewport)
 	{
@@ -498,12 +470,8 @@ bool AShooterCharacter::TraceUnderCrosshairs(
 	}
 
 	// Get screen space location of crosshairs
-<<<<<<< HEAD
-	FVector2D CrosshairLocation{ ViewportSize.X / 2.f , ViewportSize.Y / 2.f };
-	CrosshairLocation.Y -= 50.f;
-=======
 	FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
->>>>>>> branch/#1
+
 	FVector CrosshairWorldPosition;
 	FVector CrosshairWorldDirection;
 
@@ -514,47 +482,6 @@ bool AShooterCharacter::TraceUnderCrosshairs(
 		CrosshairWorldPosition,
 		CrosshairWorldDirection);
 
-<<<<<<< HEAD
-	if (bScreenToWorld) // was deprojection successful?
-	{
-		FHitResult ScreenTraceHit;
-		const FVector Start{ CrosshairWorldPosition };
-		const FVector End{ CrosshairWorldPosition + CrosshairWorldDirection * 50'000.f };
-
-		// Set beam end point to line trace end point
-		OutBeamLocation = End;
-
-		// Trace outward from crosshairs world location
-		GetWorld()->LineTraceSingleByChannel(
-			ScreenTraceHit,
-			Start,
-			End,
-			ECollisionChannel::ECC_Visibility);
-		if (ScreenTraceHit.bBlockingHit) // was there a trace hit?
-		{
-			// Beam end point is now trace hit location
-			OutBeamLocation = ScreenTraceHit.Location;
-		}
-
-		// Perform a second trace, this time from the gun barrel
-		FHitResult WeaponTraceHit;
-		const FVector WeaponTraceStart{ MuzzleSocketLocation };
-		const FVector WeaponTraceEnd{ OutBeamLocation };
-		GetWorld()->LineTraceSingleByChannel(
-			WeaponTraceHit,
-			WeaponTraceStart,
-			WeaponTraceEnd,
-			ECollisionChannel::ECC_Visibility);
-		if (WeaponTraceHit.bBlockingHit) // object between barrel and BeamEndPoint?
-		{
-			OutBeamLocation = WeaponTraceHit.Location;
-		}
-		return true;
-	}
-	return false;
-}
-
-=======
 	if (bScreenToWorld)
 	{
 		// Trace from Crosshair world location outward
@@ -763,14 +690,11 @@ void AShooterCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 	TraceHitItem = nullptr;
 	TraceHitItemLastFrame = nullptr;
 }
->>>>>>> branch/#1
 // Called every frame
 void AShooterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-<<<<<<< HEAD
-=======
 	// Handle interpolation for zoom when aiming
 	CameraInterpZoom(DeltaTime);
 
@@ -781,7 +705,6 @@ void AShooterCharacter::Tick(float DeltaTime)
 	CalculateCrosshairSpread(DeltaTime);
 	
 	TraceForItems();
->>>>>>> branch/#1
 }
 
 // Called to bind functionality to input
@@ -793,25 +716,14 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis("MoveRight", this, &AShooterCharacter::MoveRight);
 	PlayerInputComponent->BindAxis("TurnRate", this, &AShooterCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AShooterCharacter::LookUpAtRate);
-<<<<<<< HEAD
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
-=======
+
 	PlayerInputComponent->BindAxis("Turn", this, &AShooterCharacter::Turn);
 	PlayerInputComponent->BindAxis("LookUp", this, &AShooterCharacter::LookUp);
->>>>>>> branch/#1
+
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-<<<<<<< HEAD
-	PlayerInputComponent->BindAction("FireButton", IE_Pressed, this, &AShooterCharacter::FireWeapon);
-
-
-
-}
-
-=======
 	PlayerInputComponent->BindAction("FireButton", IE_Pressed, this, &AShooterCharacter::FireButtonPressed);
 	PlayerInputComponent->BindAction("FireButton", IE_Released, this, &AShooterCharacter::FireButtonReleased);
 
@@ -852,6 +764,3 @@ void AShooterCharacter::IncrementOverlappedItemCount(int8 Amount, FGuid ID)
 		}
 	}
 }
-
-
->>>>>>> branch/#1

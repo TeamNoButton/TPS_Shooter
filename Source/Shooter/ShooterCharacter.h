@@ -37,12 +37,7 @@ protected:
 	*/
 	void LookUpAtRate(float Rate);
 
-<<<<<<< HEAD
-	/** Called when the Fire Button is pressed */
-	void FireWeapon();
 
-	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
-=======
 	/**
 	* Rotate controller based on mouse X movement
 	* @param Value  The input value from mouse movement
@@ -99,7 +94,6 @@ protected:
 	void SelectButtonReleased();
 	
 	void SwapWeapon(AWeapon* WeaponToSwap);
->>>>>>> branch/#1
 
 public:	
 	// Called every frame
@@ -134,8 +128,7 @@ private:
 	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float BaseLookUpRate;
 
-<<<<<<< HEAD
-=======
+
 	// Turn rate while not aiming
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float HipTurnRate;
@@ -168,7 +161,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float MouseAimingLookUpRate;
 
->>>>>>> branch/#1
 	/** Randomized gunshot sound cue */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* FireSound;
@@ -189,8 +181,6 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UParticleSystem* BeamParticles;
 
-<<<<<<< HEAD
-=======
 	// True when aiming
 	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
@@ -268,15 +258,13 @@ private:
 
 	TArray<FGuid> ItemGuids;
 
->>>>>>> branch/#1
 public:
 	/** Returns CameraBoom subobject */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject */
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-<<<<<<< HEAD
-=======
+
 	FORCEINLINE bool GetAiming() const { return bAiming; }
 
 	UFUNCTION(BlueprintCallable)
@@ -286,5 +274,4 @@ public:
 	/** Adds/subtracts to/from OverlappedItemCount and updates bShouldTraceForItems */
 	void IncrementOverlappedItemCount(int8 Amount, FGuid ID);
 
->>>>>>> branch/#1
 };
