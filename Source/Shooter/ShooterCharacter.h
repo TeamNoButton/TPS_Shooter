@@ -37,6 +37,12 @@ protected:
 	*/
 	void LookUpAtRate(float Rate);
 
+<<<<<<< HEAD
+	/** Called when the Fire Button is pressed */
+	void FireWeapon();
+
+	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
+=======
 	/**
 	* Rotate controller based on mouse X movement
 	* @param Value  The input value from mouse movement
@@ -52,7 +58,7 @@ protected:
 	/** Called when the Fire Button is pressed */
 	void FireWeapon();
 
-	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
+	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FHitResult& OutHitResult);
 
 	// Set bAiming to true or false with button press
 	void AimingButtonPressed();
@@ -77,6 +83,23 @@ protected:
 
 	UFUNCTION()
 	void FinishCrosshairBulletFire();
+
+	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation);
+
+	/** Trace for items if OverlappedItemCount > 0 */
+	void TraceForItems();
+
+	class AWeapon* SpawnDefaultWeapon();
+
+	void EquipWeapon(AWeapon* WeaponToEquip);
+
+	void DropWeapon();
+
+	void SelectButtonPressed();
+	void SelectButtonReleased();
+	
+	void SwapWeapon(AWeapon* WeaponToSwap);
+>>>>>>> branch/#1
 
 public:	
 	// Called every frame
@@ -111,6 +134,8 @@ private:
 	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float BaseLookUpRate;
 
+<<<<<<< HEAD
+=======
 	// Turn rate while not aiming
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float HipTurnRate;
@@ -143,6 +168,7 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float MouseAimingLookUpRate;
 
+>>>>>>> branch/#1
 	/** Randomized gunshot sound cue */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* FireSound;
@@ -163,6 +189,8 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UParticleSystem* BeamParticles;
 
+<<<<<<< HEAD
+=======
 	// True when aiming
 	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
@@ -212,19 +240,51 @@ private:
 	// Sets a timer between gunshots
 	FTimerHandle AutoFireTimer;
 
+	/** True if we should trace every frame for items */
+	bool bShouldTraceForItems;
+
+
+	/** Number of overlapped AItems */
+	int8 OverlappedItemCount;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	class AItem* TraceHitItemLastFrame;
+
+	/** Currently equipped Weapon */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	AWeapon* EquippedWeapon;
+
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<AWeapon> DefaultWeaponClass;
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	AItem* TraceHitItem;
 
 	float ShootTimeDuration;
 	bool bFiringBullet;
 	FTimerHandle CrosshairShootTimer;
 
+	TArray<FGuid> ItemGuids;
+
+>>>>>>> branch/#1
 public:
 	/** Returns CameraBoom subobject */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject */
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
+<<<<<<< HEAD
+=======
 	FORCEINLINE bool GetAiming() const { return bAiming; }
 
 	UFUNCTION(BlueprintCallable)
 	float GetCrosshairSpreadMultiplier() const;
+	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
+
+	/** Adds/subtracts to/from OverlappedItemCount and updates bShouldTraceForItems */
+	void IncrementOverlappedItemCount(int8 Amount, FGuid ID);
+
+>>>>>>> branch/#1
 };
