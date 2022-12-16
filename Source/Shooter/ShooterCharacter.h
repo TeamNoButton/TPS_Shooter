@@ -4,7 +4,20 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AmmoType.h"
 #include "ShooterCharacter.generated.h"
+
+
+
+UENUM(BlueprintType)
+enum class ECombatState : uint8
+{
+	ECS_Unoccupied UMETA(DisplayName = "Unoccupied"),
+	ECS_FireTImerInProgress UMETA(DisplayName = "FireTImerInProgress"),
+	ECS_Reloading UMETA(DisplayName = "Reloading"),
+
+	ECS_MAX UMETA(DisplayName = "DefaultMAX")
+};
 
 UCLASS()
 class SHOOTER_API AShooterCharacter : public ACharacter
@@ -95,6 +108,37 @@ protected:
 
 	void SelectButtonPressed();
 	void SelectButtonReleased();
+
+	// Drops currently equipped Weapon and Equips TraceHitItem
+	void SwapWeapon(AWeapon* WeaponToSwap);
+
+	// Initiallize the Ammo Map with ammo values
+	void InitializeAmmoMap();
+
+	// Check to make sure our weapon has ammo
+	bool WeaponHasAmmo();
+	
+	// FireWeapon functions
+	void PlayFireSound();
+	void SendBullet();
+	void PlayGunfireMontage();
+
+	// Bound to the R key
+	void ReloadButtonPressed();
+
+	// Handle reloading of the weapon
+	void ReloadWeapon();
+
+	// Checks to see if we have ammo of the EqiuippedWeapon's ammo type
+	bool CarryingAmmo();
+
+	// Called from Animation Blueprint with Grab Clib notify
+	UFUNCTION(BlueprintCallable)
+	void GrabClip();
+
+	// Calle from Animation Bluerprint with Release Clip notify
+	UFUNCTION(BlueprintCallable)
+	void ReleaseClip();
 
 public:	
 	// Called every frame
@@ -248,6 +292,48 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
 
+	// The item currently hit by our trace in TraceForItems (could be null)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	AItem* TraceHitItem;
+
+	// Distance outward from the camera for the interp destination
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float CameraInterpDistance;
+
+	// Distance upward from the camera for the inter destination
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float CameraInterpElevation;
+
+	// Map to keep track of ammo of the different ammo types
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TMap<EAmmoType, int32> AmmoMap;
+
+	// Starting amount of 9mm ammo
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	int32 Starting9mmAmmo;
+
+	// Starting amount of AR ammo
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	int32 StartingARAmmo;
+
+	// Combat State, can only fire or reload if Unoccupied
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	ECombatState CombatState;
+
+	// Montage for reload animations
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* ReloadMontage;
+
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
+
+	// Transform of the clip when we first grab the clip during reloading
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FTransform ClipTransform;
+
+	// Scene component to attach to the Character's hand during reloading
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* HandSceneComponent;
 
 	float ShootTimeDuration;
 	bool bFiringBullet;
@@ -268,4 +354,8 @@ public:
 
 	// Adds/substracts to/from OverlappedCount and updates bShouldTraceForItems
 	void IncrementOverlappedItemCount(int8 Amount);
+
+	FVector GetCameraInterpLocation();
+
+	void GetPickupItem(AItem* Item);
 };
