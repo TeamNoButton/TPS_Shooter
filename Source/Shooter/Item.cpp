@@ -514,6 +514,7 @@ void AItem::StartPulseTimer()
 	}
 }
 
+/* if WeaponState == EIS_EquipInterping, do not replicate */
 void AItem::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
 {
 	Super::PreReplication(ChangedPropertyTracker);
