@@ -26,6 +26,7 @@
 #include "Net/UnrealNetwork.h"
 
 
+
 // Sets default values
 AShooterCharacter::AShooterCharacter() :
 	CameraBoom(CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"))),
@@ -91,7 +92,9 @@ AShooterCharacter::AShooterCharacter() :
 	// Bullet fire timer variables
 	ShootTimeDuration(0.05f),
 	bFiringBullet(false),
-	AnimInstance(nullptr)
+	AnimInstance(nullptr),
+	//ReplicateMovement
+	bReplicateShooterMovement(true)
 	//ReplicateWeapon
 	
 {
@@ -145,6 +148,8 @@ AShooterCharacter::AShooterCharacter() :
 
 	InterpComp6 = CreateDefaultSubobject<USceneComponent>(TEXT("Interpolation Component 6"));
 	InterpComp6->SetupAttachment(GetFollowCamera());
+
+	SetReplicateMovement(GetShooterReplicateMovement());
 }
 
 float AShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -211,9 +216,25 @@ void AShooterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 {
 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	//UAnimInstance* AnimInstance;
+	//UAnimInstance* AnimInstance;  == Montage Replicate
 	DOREPLIFETIME(AShooterCharacter, AnimInstance);
+	DOREPLIFETIME(AShooterCharacter, bReplicateShooterMovement);
+	DOREPLIFETIME(AShooterCharacter, bAiming);
 }
+
+void AShooterCharacter::SetReplicateMovement(bool bInReplicateMovement)
+{
+
+	Super::SetReplicateMovement(bInReplicateMovement);
+	
+}
+
+
+//void AShooterCharacter::OnRep_Health()
+//{
+//	if (Fuc_Dele_UpdateHp_TwoParams.IsBound())
+//		Fuc_Dele_UpdateHp_TwoParams.Broadcast(Health, MaxHealth);
+//}
 
 
 	// Called when the game starts or when spawned
@@ -705,6 +726,37 @@ void AShooterCharacter::EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping)
 		EquippedWeapon = WeaponToEquip;
 
 		EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
+	}
+}
+
+void AShooterCharacter::ReqPressSelect_Implementation(AItem* Item)
+{
+	ResPressSelect(Item);
+}
+
+void AShooterCharacter::ResPressSelect_Implementation(AItem* Item)
+{
+	Item->PlayEquipSound();
+
+	auto Weapon = Cast<AWeapon>(Item);
+	if (Weapon)
+	{
+		if (Inventory.Num() < INVENTORY_CAPACITY)
+		{
+			Weapon->SetSlotIndex(Inventory.Num());
+			Inventory.Add(Weapon);
+			Weapon->SetItemState(EItemState::EIS_PickedUp);
+		}
+		else // Inventory is full! Swap with EquippedWeapon
+		{
+			SwapWeapon(Weapon);
+		}
+	}
+
+	auto Ammo = Cast<AAmmo>(Item);
+	if (Ammo)
+	{
+		PickupAmmo(Ammo);
 	}
 }
 
@@ -1378,28 +1430,7 @@ FVector AShooterCharacter::GetCameraInterpLocation()
 
 void AShooterCharacter::GetPickupItem(AItem* Item)
 {
-	Item->PlayEquipSound();
-
-	auto Weapon = Cast<AWeapon>(Item);
-	if (Weapon)
-	{
-		if (Inventory.Num() < INVENTORY_CAPACITY)
-		{
-			Weapon->SetSlotIndex(Inventory.Num());
-			Inventory.Add(Weapon);
-			Weapon->SetItemState(EItemState::EIS_PickedUp);
-		}
-		else // Inventory is full! Swap with EquippedWeapon
-		{
-			SwapWeapon(Weapon);
-		}
-	}
-
-	auto Ammo = Cast<AAmmo>(Item);
-	if (Ammo)
-	{
-		PickupAmmo(Ammo);
-	}
+	ReqPressSelect(Item);
 }
 
 FInterpLocation AShooterCharacter::GetInterpLocation(int32 Index)

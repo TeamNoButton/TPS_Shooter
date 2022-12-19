@@ -7,6 +7,8 @@
 #include "AmmoType.h"
 #include "ShooterCharacter.generated.h"
 
+
+
 UENUM(BlueprintType)
 enum class ECombatState : uint8
 {
@@ -35,6 +37,8 @@ struct FInterpLocation
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEquipItemDelegate, int32, CurrentSlotIndex, int32, NewSlotIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, int32, SlotIndex, bool, bStartAnimation);
+//DECLARE_MULTICAST_DELEGATE_TwoParams(FDele_Multi_UpdateHp_TwoParams, float, float);
+//DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, float, SlotIndex, float, bStartAnimation);
 
 UCLASS()
 class SHOOTER_API AShooterCharacter : public ACharacter
@@ -122,6 +126,13 @@ protected:
 	/** Takes a weapon and attaches it to the mesh */
 	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
 
+
+	UFUNCTION(Server, Reliable)
+	void ReqPressSelect(AItem* Item);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void ResPressSelect(AItem* Item);
+
 	/** Detach weapon and let it fall to the ground */
 	void DropWeapon();
 
@@ -204,6 +215,8 @@ protected:
 
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 
+	virtual void SetReplicateMovement(bool bInReplicateMovement) override;
+
 	
 
 public:
@@ -283,7 +296,7 @@ private:
 
 
 	/** True when aiming */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
 	/** Default camera field of view value */
@@ -531,10 +544,12 @@ private:
 	TArray<FGuid> ItemGuids;
 
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"), replicated)
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	UAnimInstance* AnimInstance;
 
-	
+
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Replicate, meta = (AllowPrivateAccess = "true"))
+	bool bReplicateShooterMovement;
 
 public:
 	/** Returns CameraBoom subobject */
@@ -580,5 +595,7 @@ public:
 
 	void Stun();
 	FORCEINLINE float GetStunChance() const { return StunChance; }
+
+	FORCEINLINE bool GetShooterReplicateMovement() const { return bReplicateShooterMovement; }
 	
 };

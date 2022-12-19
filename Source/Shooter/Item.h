@@ -121,8 +121,9 @@ protected:
 	void UpdatePulse();
 	void ResetPulseTimer();
 	void StartPulseTimer();
-
-	virtual void PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker) override;
+	
+	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
+	virtual void SetReplicateMovement(bool bInReplicateMovement) override;
 
 public:
 	// Called every frame
@@ -133,7 +134,7 @@ public:
 
 private:
 	/** Skeletal Mesh for the item */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* ItemMesh;
 
 	/** Line trace collides with box to show HUD widgets */
@@ -297,7 +298,10 @@ private:
 
 	FGuid ID;
 
-	bool bReplicateWeapon;
+
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Rep, meta = (AllowPrivateAccess = "true"))
+	bool bReplicateItem;
+	
 
 public:
 	FORCEINLINE FGuid GetGuid() const { return ID; }
@@ -328,6 +332,8 @@ public:
 	FORCEINLINE FLinearColor GetGlowColor() const { return GlowColor; }
 	FORCEINLINE int32 GetMaterialIndex() const { return MaterialIndex; }
 	FORCEINLINE void SetMaterialIndex(int32 Index) { MaterialIndex = Index; }
+	FORCEINLINE bool GetReplicatedItem() const{ return bReplicateItem; }
+	FORCEINLINE void SetReplicatedItem(bool bstate) {  bReplicateItem = bstate; }
 
 	/** Called from the AShooterCharacter class */
 	void StartItemCurve(AShooterCharacter* Char, bool bForcePlaySound = false);
