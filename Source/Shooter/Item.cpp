@@ -31,7 +31,7 @@ AItem::AItem() :
 	InterpLocIndex(0),
 	MaterialIndex(0),
 	bCanChangeCustomDepth(true),
-	bReplicateWeapon(false)
+	bReplicateItem(true)
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -51,6 +51,10 @@ AItem::AItem() :
 
 	AreaSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AreaSphere"));
 	AreaSphere->SetupAttachment(GetRootComponent());
+
+	SetReplicateMovement(GetReplicatedItem());
+	
+	ItemMesh->SetIsReplicated(true);
 }
 
 // Called when the game starts or when spawned
@@ -164,7 +168,6 @@ void AItem::SetItemProperties(EItemState State)
 			ECollisionChannel::ECC_Visibility,
 			ECollisionResponse::ECR_Block);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		bReplicateWeapon = true;
 		break;
 	case EItemState::EIS_Equipped:
 		// Set mesh properties
@@ -179,7 +182,6 @@ void AItem::SetItemProperties(EItemState State)
 		// Set CollisionBox properties
 		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		bReplicateWeapon = true;
 		break;
 	case EItemState::EIS_Falling:
 		// Set mesh properties
@@ -197,7 +199,6 @@ void AItem::SetItemProperties(EItemState State)
 		// Set CollisionBox properties
 		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		bReplicateWeapon = true;
 		break;
 	case EItemState::EIS_EquipInterping:
 		PickupWidget->SetVisibility(false);
@@ -213,7 +214,6 @@ void AItem::SetItemProperties(EItemState State)
 		// Set CollisionBox properties
 		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		bReplicateWeapon = false;
 		break;
 	case EItemState::EIS_PickedUp:
 		PickupWidget->SetVisibility(false);
@@ -229,7 +229,6 @@ void AItem::SetItemProperties(EItemState State)
 		// Set CollisionBox properties
 		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		bReplicateWeapon = false;
 		break;
 	}
 }
@@ -376,7 +375,7 @@ void AItem::OnConstruction(const FTransform& Transform)
 	// Load the data in the Item Rarity Data Table
 
 	// Path to the Item Rarity Data Table
-	FString RarityTablePath(TEXT("DataTable'/Game/_Game/DataTable/ItemRarityDataTable.ItemRarityDataTable'"));
+	FString RarityTablePath(TEXT("DataTable'/Game/_Game/DataTable/ItemRarityTable.ItemRarityTable'"));
 	UDataTable* RarityTableObject = Cast<UDataTable>(StaticLoadObject(UDataTable::StaticClass(), nullptr, *RarityTablePath));
 	if (RarityTableObject)
 	{
@@ -514,13 +513,21 @@ void AItem::StartPulseTimer()
 	}
 }
 
-/* if WeaponState == EIS_EquipInterping, do not replicate */
-void AItem::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
+void AItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::PreReplication(ChangedPropertyTracker);
-	DOREPLIFETIME_ACTIVE_OVERRIDE(AItem, ItemMesh, bReplicateWeapon);
-
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	//UAnimInstance* AnimInstance;  == Montage Replicate
+	DOREPLIFETIME(AItem, ItemMesh);
+	DOREPLIFETIME(AItem, bReplicateItem);
 }
+
+void AItem::SetReplicateMovement(bool bInReplicateMovement)
+{
+	Super::SetReplicateMovement(bInReplicateMovement);
+}
+
+
+
 
 void AItem::SetItemState(EItemState State)
 {
