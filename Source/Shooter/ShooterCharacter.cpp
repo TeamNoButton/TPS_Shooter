@@ -172,6 +172,9 @@ float AShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 	{
 		Health -= DamageAmount;
 	}
+
+	OnRep_Health();
+
 	return DamageAmount;
 }
 
@@ -220,6 +223,10 @@ void AShooterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AShooterCharacter, AnimInstance);
 	DOREPLIFETIME(AShooterCharacter, bReplicateShooterMovement);
 	DOREPLIFETIME(AShooterCharacter, bAiming);
+	DOREPLIFETIME(AShooterCharacter, bDead);
+	DOREPLIFETIME(AShooterCharacter, CombatState);
+	
+	
 }
 
 void AShooterCharacter::SetReplicateMovement(bool bInReplicateMovement)
@@ -230,11 +237,28 @@ void AShooterCharacter::SetReplicateMovement(bool bInReplicateMovement)
 }
 
 
-//void AShooterCharacter::OnRep_Health()
-//{
-//	if (Fuc_Dele_UpdateHp_TwoParams.IsBound())
-//		Fuc_Dele_UpdateHp_TwoParams.Broadcast(Health, MaxHealth);
-//}
+void AShooterCharacter::OnRep_Health()
+{
+	if (UpdateHpDelegate.IsBound())
+	{
+		UpdateHpDelegate.Broadcast(Health, MaxHealth);
+	}
+}
+
+void AShooterCharacter::OnRep_MaxHealth()
+{
+}
+
+void AShooterCharacter::UpdateHP(float CurHp, float MaxHP)
+{
+	Health = CurHp;
+	MaxHealth = MaxHP;
+}
+
+void AShooterCharacter::BindPlayerHP()
+{
+	UpdateHpDelegate.AddUFunction(this, FName("UpdateHP"));
+}
 
 
 	// Called when the game starts or when spawned

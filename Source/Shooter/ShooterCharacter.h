@@ -37,7 +37,7 @@ struct FInterpLocation
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEquipItemDelegate, int32, CurrentSlotIndex, int32, NewSlotIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, int32, SlotIndex, bool, bStartAnimation);
-//DECLARE_MULTICAST_DELEGATE_TwoParams(FDele_Multi_UpdateHp_TwoParams, float, float);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FUpdateHpDelegate, float, float);
 //DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, float, SlotIndex, float, bStartAnimation);
 
 UCLASS()
@@ -219,6 +219,11 @@ protected:
 
 	
 
+	void UpdateHP(float CurHp, float MaxHP);
+
+	void BindPlayerHP();
+	
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -236,7 +241,7 @@ private:
 	class UCameraComponent* FollowCamera;
 
 
-	// TODO : ==== Replicate Start
+	
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -287,7 +292,7 @@ private:
 	UParticleSystem* BeamParticles;
 
 
-	//==== Replicate End
+	
 
 	/** Montage for firing the weapon */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -386,7 +391,7 @@ private:
 	int32 StartingARAmmo;
 
 	/** Combat State, can only fire or reload if Unoccupied */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	ECombatState CombatState;
 
 	/** Montage for reload animations */
@@ -501,16 +506,19 @@ private:
 	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"))
 	FHighlightIconDelegate HighlightIconDelegate;
 
+	/** Delegate for sending player health information */
+	FUpdateHpDelegate UpdateHpDelegate;
+
 	/** The index for the currently highlighted slot */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
 	int32 HighlightedSlot;
 
 	/** Character health */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_Health, EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float Health;
 
 	/** Character max health */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_MaxHealth, EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float MaxHealth;
 
 	/** Sound made when Character gets hit by a melee attack */
@@ -534,7 +542,7 @@ private:
 	UAnimMontage* DeathMontage;
 
 	/** true when Character dies */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated,BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bDead;
 
 	float ShootTimeDuration;
@@ -598,4 +606,9 @@ public:
 
 	FORCEINLINE bool GetShooterReplicateMovement() const { return bReplicateShooterMovement; }
 	
+	UFUNCTION()
+		void OnRep_Health();
+
+	UFUNCTION()
+		void OnRep_MaxHealth();
 };
