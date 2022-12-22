@@ -375,7 +375,6 @@ void AItem::OnConstruction(const FTransform& Transform)
 		ItemMesh->SetMaterial(MaterialIndex, DynamicMaterialInstance);
 
 		EnableGlowMaterial();
-
 	}
 	
 	// Load the data in the Item Rarity Data Table
