@@ -106,6 +106,8 @@ protected:
 	UFUNCTION()
 	void DestroyEnemy();
 
+	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
+
 private:
 	/** Particles to spawn when hit by bullets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -116,11 +118,11 @@ private:
 	class USoundCue* ImpactSound;
 
 	/** Current health of the enemy */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float Health;
 
 	/** Maximum health of the enemy */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float MaxHealth;
 
 	/** Name of the head bone */
@@ -231,6 +233,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* DeathMontage;
 
+	UPROPERTY(Replicated)
 	bool bDying;
 
 	FTimerHandle DeathTimer;
@@ -238,6 +241,10 @@ private:
 	/** Time after death until Destroy */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float DeathTime;
+
+
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
+	UAnimInstance* AnimInstance;
 
 public:	
 	// Called every frame

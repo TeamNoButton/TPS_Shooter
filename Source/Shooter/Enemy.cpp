@@ -14,6 +14,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AEnemy::AEnemy() :
@@ -133,6 +134,8 @@ void AEnemy::BeginPlay()
 
 		EnemyController->RunBehaviorTree(BehaviorTree);
 	}
+
+	SetReplicateMovement(true);
 }
 
 void AEnemy::ShowHealthBar_Implementation()
@@ -152,7 +155,7 @@ void AEnemy::Die()
 
 	HideHealthBar();
 
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && DeathMontage)
 	{
 		AnimInstance->Montage_Play(DeathMontage);
@@ -172,7 +175,7 @@ void AEnemy::PlayHitMontage(FName Section, float PlayRate)
 {
 	if (bCanHitReact)
 	{
-		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		AnimInstance = GetMesh()->GetAnimInstance();
 		if (AnimInstance)
 		{
 			AnimInstance->Montage_Play(HitMontage, PlayRate);
@@ -297,7 +300,7 @@ void AEnemy::CombatRangeEndOverlap(UPrimitiveComponent* OverlappedComponent, AAc
 
 void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 {
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && AttackMontage)
 	{
 		AnimInstance->Montage_Play(AttackMontage);
@@ -416,6 +419,14 @@ void AEnemy::FinishDeath()
 void AEnemy::DestroyEnemy()
 {
 	Destroy();
+}
+
+void AEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	DOREPLIFETIME(AEnemy, AnimInstance);
+	DOREPLIFETIME(AEnemy, Health);
+	DOREPLIFETIME(AEnemy, MaxHealth);
+	DOREPLIFETIME(AEnemy, bDying);
 }
 
 void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
