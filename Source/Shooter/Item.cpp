@@ -401,14 +401,15 @@ void AItem::OnConstruction(const FTransform& Transform)
 
 		if (RarityRow)
 		{
-			GlowColor = RarityRow->GlowColor;
-			LightColor = RarityRow->LightColor;
-			DarkColor = RarityRow->DarkColor;
-			NumberOfStars = RarityRow->NumberOfStars;
-			IconBackground = RarityRow->IconBackground;
+			RarityData.GlowColor = RarityRow->GlowColor;
+			RarityData.LightColor = RarityRow->LightColor;
+			RarityData.DarkColor = RarityRow->DarkColor;
+			RarityData.NumberOfStars = RarityRow->NumberOfStars;
+			RarityData.IconBackground = RarityRow->IconBackground;
+			RarityData.CustomDepthStencil = RarityRow->CustomDepthStencil;
 			if (GetItemMesh())
 			{
-				GetItemMesh()->SetCustomDepthStencilValue(RarityRow->CustomDepthStencil);
+				GetItemMesh()->SetCustomDepthStencilValue(RarityData.CustomDepthStencil);
 			}
 		}
 	}

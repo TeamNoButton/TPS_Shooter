@@ -20,18 +20,26 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	UFUNCTION(Server, Reliable)
+	void ReqDestroy(FHitResult HitResult, AActor* Shooter, AController* ShooterController);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void ResDestroy(FHitResult HitResult, AActor* Shooter, AController* ShooterController);
+
+	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
+
 private:
 
 	/** Explosion when hit by a bullet */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UParticleSystem* ExplodeParticles;
 
 	/** Sound to play when hit by bullets */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* ImpactSound;
 
 	/** Mesh for the explosive */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UStaticMeshComponent* ExplosiveMesh;
 
 	/** Used to determine what Actors overlap during explosion */
@@ -47,4 +55,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController) override;
+
+	FORCEINLINE class UStaticMeshComponent* GetMesh() const { return ExplosiveMesh; }
+
 };

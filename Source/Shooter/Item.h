@@ -296,6 +296,9 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Rarity, meta = (AllowPrivateAccess = "true"))
 	UTexture2D* IconBackground;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Rarity, meta = (AllowPrivateAccess = "true"))
+	FItemRarityTable RarityData;
+
 	FGuid ID;
 
 

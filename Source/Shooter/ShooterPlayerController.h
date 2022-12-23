@@ -16,16 +16,17 @@ class SHOOTER_API AShooterPlayerController : public APlayerController
 public:
 	AShooterPlayerController();
 
+
 protected:
-
 	virtual void BeginPlay() override;
-
-private:
-	/** Reference to the Overall HUD Overlay Blueprint Class */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Widgets, meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<class UUserWidget> HUDOverlayClass;
-	
-	/** Variable to hold the HUD Overlay Widget after creating it */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Widgets, meta = (AllowPrivateAccess = "true"))
-	UUserWidget* HUDOverlay;
+//
+//	virtual void OnPossess(APawn* PawnToPossess) override;
+//
+//	UFUNCTION(Server, Reliable)
+//		void ReqOnPossess(const FString& Name);
+//	void ReqOnPossess_Implementation(const FString& Name);
+//
+//	UFUNCTION(NetMulticast, Reliable)
+//		void ResOnPossess();
+//	void ResOnPossess_Implementation();
 };

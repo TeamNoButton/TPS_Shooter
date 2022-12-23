@@ -18,8 +18,8 @@
 
 // Sets default values
 AEnemy::AEnemy() :
-	Health(100.f),
-	MaxHealth(100.f),
+	EnemyHealth(100.f),
+	EnemyMaxHealth(100.f),
 	HealthBarDisplayTime(4.f),
 	bCanHitReact(true),
 	HitReactTimeMin(.5f),
@@ -423,10 +423,40 @@ void AEnemy::DestroyEnemy()
 
 void AEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AEnemy, AnimInstance);
-	DOREPLIFETIME(AEnemy, Health);
-	DOREPLIFETIME(AEnemy, MaxHealth);
+	DOREPLIFETIME(AEnemy, EnemyHealth);
+	DOREPLIFETIME(AEnemy, EnemyMaxHealth);
 	DOREPLIFETIME(AEnemy, bDying);
+}
+
+void AEnemy::BindEnemyHp()
+{
+	UpdateHpDelegate.AddUFunction(this, FName("UpdateEnemyHp"));
+}
+
+void AEnemy::UpdateEnemyHp(float CurHp, float MaxHp)
+{
+	EnemyHealth = CurHp;
+	EnemyMaxHealth = MaxHp;
+}
+
+void AEnemy::OnRep_EnemyHealth()
+{
+	if (UpdateHpDelegate.IsBound())
+	{
+		UpdateHpDelegate.Broadcast(EnemyHealth, EnemyMaxHealth);
+	}
+}
+
+void AEnemy::OnRep_EnemyMaxHealth()
+{
+}
+
+void AEnemy::UpdateHP(float CurHp, float MaxHP)
+{
+	EnemyHealth = CurHp;
+	EnemyMaxHealth = MaxHP;
 }
 
 void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -508,14 +538,14 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 			DamageCauser);
 	}
 	
-	if (Health - DamageAmount <= 0.f)
+	if (EnemyHealth - DamageAmount <= 0.f)
 	{
-		Health = 0.f;
+		EnemyHealth = 0.f;
 		Die();
 	}
 	else
 	{
-		Health -= DamageAmount;
+		EnemyHealth -= DamageAmount;
 	}
 
 	if (bDying) return DamageAmount;
@@ -530,6 +560,8 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 		PlayHitMontage(FName("HitReactFront"));
 		SetStunned(true);
 	}
+
+	OnRep_EnemyHealth();
 
 	return DamageAmount;
 }

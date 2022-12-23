@@ -162,6 +162,7 @@ void AWeapon::UpdateSlideDisplacement()
 
 void AWeapon::DecrementAmmo()
 {
+	
 	if (Ammo - 1 <= 0)
 	{
 		Ammo = 0;

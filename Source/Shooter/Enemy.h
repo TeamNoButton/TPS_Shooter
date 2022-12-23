@@ -7,6 +7,8 @@
 #include "BulletHitInterface.h"
 #include "Enemy.generated.h"
 
+DECLARE_MULTICAST_DELEGATE_TwoParams(FUpdateHpDelegate, float, float);
+
 UCLASS()
 class SHOOTER_API AEnemy : public ACharacter, public IBulletHitInterface
 {
@@ -108,6 +110,17 @@ protected:
 
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 
+	void BindEnemyHp();
+
+	void UpdateEnemyHp(float CurHp, float MaxHp);
+
+	UFUNCTION()
+	void OnRep_EnemyHealth();
+	UFUNCTION()
+	void OnRep_EnemyMaxHealth();
+
+	void UpdateHP(float CurHp, float MaxHP);
+
 private:
 	/** Particles to spawn when hit by bullets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -118,12 +131,12 @@ private:
 	class USoundCue* ImpactSound;
 
 	/** Current health of the enemy */
-	UPROPERTY(EditAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float Health;
+	UPROPERTY(ReplicatedUsing = OnRep_EnemyHealth, EditAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float EnemyHealth;
 
 	/** Maximum health of the enemy */
-	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float MaxHealth;
+	UPROPERTY(ReplicatedUsing = OnRep_EnemyMaxHealth, EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float EnemyMaxHealth;
 
 	/** Name of the head bone */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -246,6 +259,8 @@ private:
 	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	UAnimInstance* AnimInstance;
 
+	FUpdateHpDelegate UpdateHpDelegate;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -263,4 +278,6 @@ public:
 	void ShowHitNumber(int32 Damage, FVector HitLocation, bool bHeadShot);
 
 	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
+
+	
 };

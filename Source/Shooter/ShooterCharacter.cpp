@@ -90,7 +90,9 @@ AShooterCharacter::AShooterCharacter() :
 	StunChance(.25f),
 	bDead(false),
 	// Bullet fire timer variables
-	ShootTimeDuration(0.05f),
+	ShootTimeDuration(0.1f),
+	ReloadTimeDuraton(2.2f),
+	EquippingTimeDuration(0.7f),
 	bFiringBullet(false),
 	AnimInstance(nullptr),
 	//ReplicateMovement
@@ -150,6 +152,8 @@ AShooterCharacter::AShooterCharacter() :
 	InterpComp6->SetupAttachment(GetFollowCamera());
 
 	SetReplicateMovement(GetShooterReplicateMovement());
+	SetReplicates(GetShooterReplicateMovement());
+	SetShooterReplicateMovement(true);
 }
 
 float AShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -178,9 +182,10 @@ float AShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 	return DamageAmount;
 }
 
-void AShooterCharacter::Die()
+void AShooterCharacter::Die_Implementation()
 {
 	bDead = true;
+
 	AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && DeathMontage)
 	{
@@ -201,18 +206,19 @@ void AShooterCharacter::FinishDeath()
 
 void AShooterCharacter::StartCrosshairBulletFire()
 {
-	bFiringBullet = true;
+	SetFiringBullet(true);
 
 	GetWorldTimerManager().SetTimer(
 		CrosshairShootTimer,
 		this,
 		&AShooterCharacter::FinishCrosshairBulletFire,
-		ShootTimeDuration);
+		GetShootTimeDuration());
 }
 
 void AShooterCharacter::FinishCrosshairBulletFire()
 {
-	bFiringBullet = false;
+	CombatState = ECombatState::ECS_Unoccupied;
+	SetFiringBullet(false);
 }
 
 void AShooterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -225,8 +231,13 @@ void AShooterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AShooterCharacter, bAiming);
 	DOREPLIFETIME(AShooterCharacter, bDead);
 	DOREPLIFETIME(AShooterCharacter, CombatState);
-	
-	
+	DOREPLIFETIME(AShooterCharacter, bCrouching);
+	DOREPLIFETIME(AShooterCharacter, bFiringBullet);
+	DOREPLIFETIME(AShooterCharacter, BaseLookUpRate);
+	DOREPLIFETIME(AShooterCharacter, HipLookUpRate);
+	DOREPLIFETIME(AShooterCharacter, AimingLookUpRate);
+	DOREPLIFETIME(AShooterCharacter, MouseHipLookUpRate);
+	DOREPLIFETIME(AShooterCharacter, MouseAimingLookUpRate);
 }
 
 void AShooterCharacter::SetReplicateMovement(bool bInReplicateMovement)
@@ -405,9 +416,10 @@ bool AShooterCharacter::GetBeamEndLocation(
 	if (!OutHitResult.bBlockingHit) // object between barrel and BeamEndPoint?
 	{
 		OutHitResult.Location = OutBeamLocation;
+		
 		return false;
 	}
-
+	
 	return true;
 }
 
@@ -518,7 +530,7 @@ void AShooterCharacter::CalculateCrosshairSpread(float DeltaTime)
 	}
 
 	// True 0.05 second after firing
-	if (bFiringBullet)
+	if (GetFiringBullet())
 	{
 		CrosshairShootingFactor = FMath::FInterpTo(
 			CrosshairShootingFactor,
@@ -849,6 +861,7 @@ void AShooterCharacter::PlayFireSound()
 
 void AShooterCharacter::SendBullet()
 {
+	
 	// Send bullet
 	const USkeletalMeshSocket* BarrelSocket =
 		EquippedWeapon->GetItemMesh()->GetSocketByName("BarrelSocket");
@@ -865,6 +878,7 @@ void AShooterCharacter::SendBullet()
 		FHitResult BeamHitResult;
 		bool bBeamEnd = GetBeamEndLocation(
 			SocketTransform.GetLocation(), BeamHitResult);
+		
 		if (bBeamEnd)
 		{
 			// Does hit Actor implement BulletHitInterface?
@@ -931,6 +945,10 @@ void AShooterCharacter::SendBullet()
 			}
 		}
 	}
+	else
+	{
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("BarrelSocket Fail")));
+	}
 }
 
 void AShooterCharacter::PlayGunfireMontage()
@@ -961,6 +979,12 @@ void AShooterCharacter::ReloadWeapon()
 		{
 			StopAiming();
 		}
+
+		GetWorldTimerManager().SetTimer(
+			CrosshairShootTimer,
+			this,
+			&AShooterCharacter::FinishReloading,
+			GetReloadTimeDuration());
 
 		CombatState = ECombatState::ECS_Reloading;
 		AnimInstance = GetMesh()->GetAnimInstance();
@@ -1190,7 +1214,14 @@ void AShooterCharacter::ExchangeInventoryItems(int32 CurrentItemIndex, int32 New
 			AnimInstance->Montage_JumpToSection(FName("Equip"));
 		}
 		NewWeapon->PlayEquipSound(true);
+		GetWorldTimerManager().SetTimer(
+			CrosshairShootTimer,
+			this,
+			&AShooterCharacter::FinishEquipping,
+			GetEquippingTimeDuration());
+
 	}
+	
 }
 
 int32 AShooterCharacter::GetEmptyInventorySlot()
@@ -1234,6 +1265,7 @@ void AShooterCharacter::Stun()
 	{
 		AnimInstance->Montage_Play(HitReactMontage);
 	}
+
 }
 
 EPhysicalSurface AShooterCharacter::GetSurfaceType()
@@ -1250,6 +1282,7 @@ EPhysicalSurface AShooterCharacter::GetSurfaceType()
 		End,
 		ECollisionChannel::ECC_Visibility,
 		QueryParams);
+	
 	return UPhysicalMaterial::DetermineSurfaceType(HitResult.PhysMaterial.Get());
 }
 

@@ -203,6 +203,7 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void EndStun();
 
+	UFUNCTION(NetMulticast, Reliable)
 	void Die();
 
 	UFUNCTION(BlueprintCallable)
@@ -248,7 +249,7 @@ private:
 	float BaseTurnRate;
 
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final turn rate */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float BaseLookUpRate;
 
 	/** Turn rate while not aiming */
@@ -256,7 +257,7 @@ private:
 	float HipTurnRate;
 
 	/** Look up rate when not aiming */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float HipLookUpRate;
 
 	/** Turn rate when aiming */
@@ -264,7 +265,7 @@ private:
 	float AimingTurnRate;
 
 	/** Look up rate when aiming */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float AimingLookUpRate;
 
 	/** Scale factor for mouse look sensitivity. Turn rate when not aiming. */
@@ -272,7 +273,7 @@ private:
 	float MouseHipTurnRate;
 
 	/** Scale factor for mouse look sensitivity. Look up rate when not aiming. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditDefaultsOnly,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float MouseHipLookUpRate;
 
 	/** Scale factor for mouse look sensitivity. Turn rate when aiming. */
@@ -280,7 +281,7 @@ private:
 	float MouseAimingTurnRate;
 
 	/** Scale factor for mouse look sensitivity. Look up rate when aiming. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditDefaultsOnly,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float MouseAimingLookUpRate;
 
 	/** Particles spawned upon bullet impact */
@@ -417,7 +418,7 @@ private:
 	USceneComponent* HandSceneComponent;
 
 	/** True when crouching */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bCrouching;
 
 	/** Regular movement speed */
@@ -546,6 +547,12 @@ private:
 	bool bDead;
 
 	float ShootTimeDuration;
+
+	float ReloadTimeDuraton;
+
+	float EquippingTimeDuration;
+
+	UPROPERTY(Replicated)
 	bool bFiringBullet;
 	FTimerHandle CrosshairShootTimer;
 
@@ -581,6 +588,7 @@ public:
 	void GetPickupItem(AItem* Item);
 
 	FORCEINLINE ECombatState GetCombatState() const { return CombatState; }
+	FORCEINLINE void SetCombatState(ECombatState state) {  CombatState = state; }
 	FORCEINLINE bool GetCrouching() const { return bCrouching; }
 	FInterpLocation GetInterpLocation(int32 Index);
 
@@ -604,8 +612,14 @@ public:
 	void Stun();
 	FORCEINLINE float GetStunChance() const { return StunChance; }
 
-	FORCEINLINE bool GetShooterReplicateMovement() const { return bReplicateShooterMovement; }
-	
+	FORCEINLINE bool GetShooterReplicateMovement() const { return bReplicates; }
+	FORCEINLINE void SetShooterReplicateMovement(bool state) { bReplicates = state; }
+	FORCEINLINE bool GetFiringBullet() const { return bFiringBullet; }
+	FORCEINLINE void SetFiringBullet(bool state) {  bFiringBullet = state; }
+	FORCEINLINE float GetShootTimeDuration() { return ShootTimeDuration; }
+	FORCEINLINE float GetReloadTimeDuration() { return ReloadTimeDuraton; }
+	FORCEINLINE float GetEquippingTimeDuration() const { return EquippingTimeDuration; }
+
 	UFUNCTION()
 		void OnRep_Health();
 

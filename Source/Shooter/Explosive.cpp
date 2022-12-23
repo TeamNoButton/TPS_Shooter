@@ -9,6 +9,8 @@
 #include "Components/SphereComponent.h"
 #include "Enemy.h"
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
+#include "Components/PrimitiveComponent.h"
 
 // Sets default values
 AExplosive::AExplosive() :
@@ -22,33 +24,32 @@ AExplosive::AExplosive() :
 
 	OverlapSphere = CreateDefaultSubobject<USphereComponent>(TEXT("OverlapSphere"));
 	OverlapSphere->SetupAttachment(GetRootComponent());
+
+
+	SetReplicateMovement(true);
+	SetReplicates(true);
+	GetMesh()->SetSimulatePhysics(true);
 }
 
 // Called when the game starts or when spawned
 void AExplosive::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void AExplosive::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AExplosive, ExplodeParticles);
+	DOREPLIFETIME(AExplosive, ImpactSound);
+	DOREPLIFETIME(AExplosive, ExplosiveMesh);
 	
-}
-
-// Called every frame
-void AExplosive::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 
 }
 
-void AExplosive::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController)
+void AExplosive::ReqDestroy_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController)
 {
-	if (ImpactSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
-	}
-	if (ExplodeParticles)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplodeParticles, HitResult.Location, FRotator(0.f), true);
-	}
-
 	// Apply explosive damage
 	TArray<AActor*> OverlappingActors;
 	GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
@@ -67,6 +68,63 @@ void AExplosive::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter,
 	}
 
 	Destroy();
+	ResDestroy(HitResult, Shooter, ShooterController);
+}
+
+void AExplosive::ResDestroy_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController)
+{
+
+	if (ImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	}
+	if (ExplodeParticles)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplodeParticles, HitResult.Location, FRotator(0.f), true);
+	}
+
+	
+}
+
+// Called every frame
+void AExplosive::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 
 }
+
+void AExplosive::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController)
+{
+	//if (ImpactSound)
+	//{
+	//	UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	//}
+	//if (ExplodeParticles)
+	//{
+	//	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplodeParticles, HitResult.Location, FRotator(0.f), true);
+	//}
+
+	//// Apply explosive damage
+	//TArray<AActor*> OverlappingActors;
+	//GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
+
+	//for (auto Actor : OverlappingActors)
+	//{
+	//	UE_LOG(LogTemp, Warning, TEXT("Actor damaged by explosive: %s"), *Actor->GetName());
+
+	//	UGameplayStatics::ApplyDamage(
+	//		Actor,
+	//		Damage,
+	//		ShooterController,
+	//		Shooter,
+	//		UDamageType::StaticClass()
+	//	);
+	//}
+
+	//Destroy();
+
+	ReqDestroy(HitResult, Shooter, ShooterController);
+}
+
+
 
