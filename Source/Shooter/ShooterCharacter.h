@@ -15,6 +15,7 @@ enum class ECombatState : uint8
 	ECS_Reloading UMETA(DisplayName = "Reloading"),
 	ECS_Equipping UMETA(DisplayName = "Equipping"),
 	ECS_Stunned UMETA(DisplayName = "Stunned"),
+	ECS_Dying UMETA(DisplayName = "Dying"),
 
 	ECS_MAX UMETA(DisplayName = "DefaultMAX")
 };
@@ -521,9 +522,6 @@ private:
 	UAnimMontage* DeathMontage;
 
 
-	UPROPERTY(VisibleAnywhere, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	bool bDying;
-
 public:
 	/** Returns CameraBoom subobject */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
@@ -566,7 +564,6 @@ public:
 	void Stun();
 	FORCEINLINE float GetStunChance() const { return StunChance; }
 
-	FORCEINLINE bool GetDying() const { return bDying; }
 };
 
 

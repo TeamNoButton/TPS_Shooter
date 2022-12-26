@@ -89,8 +89,7 @@ AShooterCharacter::AShooterCharacter() :
 	// Combat variables
 	Health(100.f),
 	MaxHealth(100.f),
-	StunChance(.25f),
-	bDying(false)
+	StunChance(.25f)
 {
 
 
@@ -307,20 +306,17 @@ void AShooterCharacter::FireWeapon()
 				EquippedWeapon->GetReloadMontageSection());
 		}
 	}
-	else if (CombatState == ECombatState::ECS_Unoccupied)
-	{
-	}
 	if (WeaponHasAmmo())
 	{
-		PlayFireSound();
-		SendBullet();
 		PlayGunFireMontage();
+		PlayFireSound();
+		StartFireTimer();
+		SendBullet();
 		// Start bullet fire timer for crosshairs
 		StartCrosshairBulletFire();
 		// Subtract 1 from the Weapon's Ammo
 		EquippedWeapon->DecrementAmmo();
 
-		StartFireTimer();
 		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Pistol)
 		{
 			// Start moving slide timer
@@ -361,7 +357,7 @@ bool AShooterCharacter::GetBeamEndLocation(
 void AShooterCharacter::AimingButtonPressed()
 {
 	bAimingButtonPressed = true;
-	if (CombatState != ECombatState::ECS_Reloading && CombatState != ECombatState::ECS_Equipping && CombatState != ECombatState::ECS_Stunned)
+	if (CombatState == ECombatState::ECS_Unoccupied)
 	{
 		Aim();
 	}
@@ -519,10 +515,15 @@ void AShooterCharacter::StartFireTimer()
 
 void AShooterCharacter::AutoFireReset()
 {
-	if (CombatState == ECombatState::ECS_Stunned) return;
+	if (CombatState != ECombatState::ECS_FireTimerInProgress) return;
 
 	CombatState = ECombatState::ECS_Unoccupied;
-	if (EquippedWeapon == nullptr) return;
+	if (EquippedWeapon == nullptr)
+	{
+
+		return;
+	}
+
 	if (WeaponHasAmmo())
 	{
 		if (bFireButtonPressed && EquippedWeapon->GetAutomatic())
@@ -1323,11 +1324,12 @@ void AShooterCharacter::EndStun()
 
 void AShooterCharacter::Die()
 {
-	if (bDying) return;
-	bDying = true;
+	if (CombatState == ECombatState::ECS_Dying) return;
+	CombatState = ECombatState::ECS_Dying;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && DeathMontage)
 	{
+		// AnimInstance->Montage_Pause();
 		AnimInstance->Montage_Play(DeathMontage);
 	}
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
@@ -1350,7 +1352,7 @@ void AShooterCharacter::UnHighlightInventorySlot()
 
 void AShooterCharacter::Stun()
 {
-	if (bDying) return;
+	if (CombatState == ECombatState::ECS_Dying) return;
 	CombatState = ECombatState::ECS_Stunned;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && HitReactMontage)

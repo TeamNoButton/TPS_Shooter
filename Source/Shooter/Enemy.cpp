@@ -433,10 +433,7 @@ void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 	{
 		DoDamage(Character);
 		SpawnBlood(Character, LeftWeaponSocket);
-		if (!Character->GetDying())
-		{
-			StunCharacter(Character);
-		}
+		StunCharacter(Character);
 	}
 }
 
@@ -447,10 +444,7 @@ void AEnemy::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 	{
 		DoDamage(Character);
 		SpawnBlood(Character, RightWeaponSocket);
-		if (!Character->GetDying())
-		{
-			StunCharacter(Character);
-		}
+		StunCharacter(Character);
 	}
 }
 
