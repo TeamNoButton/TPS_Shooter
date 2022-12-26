@@ -129,13 +129,13 @@ protected:
 	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
 
 	/** Detach weapon and let it fall to the ground */
-	void DropWeapon();
+	void DropWeapon(int32 SelectedIndex);
 
 	void SelectButtonPressed();
 	void SelectButtonReleased();
 
 	/** Drops currently equipped Weapon and Equips TraceHitItem */
-	void SwapWeapon(AWeapon* WeaponToSwap);
+	void SwapWeapon(AWeapon* WeaponToSwap, int32 SelectedIndex);
 
 	/** Initialize the Ammo Map with ammo values */
 	void InitializeAmmoMap();
@@ -188,7 +188,7 @@ protected:
 
 	void ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
 
-	int32 GetEmptyInventorySlot();
+	int32 GetChangableInventorySlot();
 
 	void HighlightInventorySlot();
 
@@ -479,7 +479,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
 	TArray<AItem*> Inventory;
 
-	const int32 INVENTROY_CAPACITY{ 6 };
+	const int32 INVENTORY_CAPACITY{ 3 };
 
 	/** Delegate for sending slot information to InventoryBar when equipping */
 	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"))
