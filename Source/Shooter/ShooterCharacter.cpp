@@ -183,7 +183,7 @@ void AShooterCharacter::BeginPlay()
 	// Spawn the default weapon and attach it to the mesh
 	EquipWeapon(SpawnDefaultWeapon());
 	Inventory.SetNum(INVENTORY_CAPACITY);
-	Inventory.Insert(EquippedWeapon, INVENTORY_CAPACITY - 1);
+	Inventory[INVENTORY_CAPACITY - 1] = EquippedWeapon;
 	EquippedWeapon->DisableCustomDepth();
 	EquippedWeapon->DisableGlowMaterial();
 	EquippedWeapon->SetCharacter(this);
@@ -614,7 +614,9 @@ void AShooterCharacter::TraceForItems()
 		{
 			TraceHitItem = Cast<AItem>(ItemTraceResult.Actor);
 			const auto TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
-			if (TraceHitWeapon)
+			bool bHasEmptySlot;
+			GetChangableInventorySlot(bHasEmptySlot);
+			if (TraceHitWeapon && bHasEmptySlot)
 			{
 				if (HighlightedSlot == -1)
 				{
@@ -671,6 +673,7 @@ void AShooterCharacter::TraceForItems()
 		}
 		else
 		{
+			if(TraceHitItem)
 			if (TraceHitItemLastFrame)
 			{
 				TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
@@ -746,18 +749,27 @@ void AShooterCharacter::EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping)
 void AShooterCharacter::DropWeapon(int32 SelectedIndex)
 {
 	
-	if (EquippedWeapon)
-	{
-		if (SelectedIndex == EquippedWeapon->GetSlotIndex()) // Drop EquippedWeapon
-		{
-			FDetachmentTransformRules DetachmentTransfromRules(EDetachmentRule::KeepWorld, true);
-			EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransfromRules);
+	if (!EquippedWeapon)return;
 
-			EquippedWeapon->SetItemState(EItemState::EIS_Falling);
-			EquippedWeapon->ThrowWeapon();
-		}
-		//EquippedWeapon = nullptr;
+	if (SelectedIndex == EquippedWeapon->GetSlotIndex()) // Drop EquippedWeapon
+	{
+		FDetachmentTransformRules DetachmentTransfromRules(EDetachmentRule::KeepWorld, true);
+		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransfromRules);
+
+		EquippedWeapon->SetItemState(EItemState::EIS_Falling);
+		EquippedWeapon->ThrowWeapon();
+		// Eqip Next Weapon
+
 	}
+	else // Drop Inventory Weapon
+	{
+		FDetachmentTransformRules DetachmentTransfromRules(EDetachmentRule::KeepWorld, true);
+		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransfromRules);
+		Inventory[SelectedIndex]->SetItemState(EItemState::EIS_Falling);
+		Cast<AWeapon>(Inventory[SelectedIndex])->ThrowWeapon();
+	}
+	//EquippedWeapon = nullptr;
+
 }
 
 void AShooterCharacter::SelectButtonPressed()
@@ -793,7 +805,7 @@ void AShooterCharacter::SwapWeapon(AWeapon* WeaponToSwap, int32 SelectedIndex)
 	}
 	else // just Picked up weapon
 	{
-
+		DropWeapon(SelectedIndex);
 	}
 
 	TraceHitItem = nullptr;
@@ -1038,6 +1050,9 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAction("3Key", IE_Pressed, this,
 		&AShooterCharacter::ThreeKeyPressed);
 
+	PlayerInputComponent->BindAction("Drop", IE_Pressed, this,
+		&AShooterCharacter::DropKeyPressed);
+
 }
 
 void AShooterCharacter::FinishReloading()
@@ -1231,17 +1246,24 @@ void AShooterCharacter::InitializeInterpLocations()
 
 void AShooterCharacter::OneKeyPressed()
 {
-	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 1);
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 0);
 }
 
 void AShooterCharacter::TwoKeyPressed()
 {
-	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 2);
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 1);
 }
 
 void AShooterCharacter::ThreeKeyPressed()
 {
-	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 3);
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 2);
+}
+
+void AShooterCharacter::DropKeyPressed()
+{
+	if (CombatState != ECombatState::ECS_Unoccupied) return;
+	if (!EquippedWeapon || EquippedWeapon->GetSlotIndex() == INVENTORY_CAPACITY - 1) return;
+	DropWeapon(EquippedWeapon->GetSlotIndex());
 }
 
 void AShooterCharacter::ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex)
@@ -1264,20 +1286,23 @@ void AShooterCharacter::ExchangeInventoryItems(int32 CurrentItemIndex, int32 New
 	}
 }
 
-int32 AShooterCharacter::GetChangableInventorySlot()
+int32 AShooterCharacter::GetChangableInventorySlot(bool& OutHasEmptySlot)
 {
 	int32 ChangableIndex = -1;
 	for (int32 i = 0; i < INVENTORY_CAPACITY; i++) // 0, 1, 2
 	{
 		if (Inventory[i] == nullptr)
 		{
+			OutHasEmptySlot = true;
 			ChangableIndex = i;
+			break;
 		}
 	}
 	if (ChangableIndex == -1) // Inventory is full!
 	{
+		OutHasEmptySlot = false;
 		ChangableIndex = EquippedWeapon->GetSlotIndex();
-		if (ChangableIndex == 3)
+		if (ChangableIndex == INVENTORY_CAPACITY - 1) // if DefaultWeapon is equipped
 		{
 			ChangableIndex = 0;
 		}
@@ -1288,9 +1313,11 @@ int32 AShooterCharacter::GetChangableInventorySlot()
 
 void AShooterCharacter::HighlightInventorySlot()
 {
-	const int32 ChangableSlot{ GetChangableInventorySlot() };
+	bool bHasEmptySlot;
+	const int32 ChangableSlot{ GetChangableInventorySlot(bHasEmptySlot) };
 	HighlightIconDelegate.Broadcast(ChangableSlot, true);
 	HighlightedSlot = ChangableSlot;
+
 }
 
 EPhysicalSurface AShooterCharacter::GetSurfaceType()
@@ -1447,12 +1474,13 @@ void AShooterCharacter::GetPickupItem(AItem* Item)
 		auto Weapon = Cast<AWeapon>(Item);
 		if (Weapon)
 		{
-			int32 WeaponIndex = GetChangableInventorySlot();
+			bool bHasEmptySlot;
+			int32 WeaponIndex = GetChangableInventorySlot(bHasEmptySlot);
 
-			if (Inventory[WeaponIndex] == nullptr)
+			if (bHasEmptySlot)
 			{
 				Weapon->SetSlotIndex(WeaponIndex);
-				Inventory.Insert(Weapon, WeaponIndex);
+				Inventory[WeaponIndex] = Weapon;
 				Weapon->SetItemState(EItemState::EIS_Pickedup);
 			}
 			else // Inventory is full! Swap with EquippedWeapon

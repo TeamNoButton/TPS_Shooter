@@ -186,9 +186,11 @@ protected:
 	void FourKeyPressed();
 	void FiveKeyPressed();
 
+	void DropKeyPressed();
+
 	void ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
 
-	int32 GetChangableInventorySlot();
+	int32 GetChangableInventorySlot(bool& OutHasEmptySlot);
 
 	void HighlightInventorySlot();
 
