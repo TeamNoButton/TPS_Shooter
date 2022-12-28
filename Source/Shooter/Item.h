@@ -15,6 +15,7 @@ enum class EItemRarity : uint8
 	EIR_Uncommon UMETA(DisplayName = "Uncommon"),
 	EIR_Rare UMETA(DisplayName = "Rare"),
 	EIR_Legendary UMETA(DisplayName = "Legendary"),
+	EIR_Default UMETA(DisplayName = "Default"),
 
 	EIR_MAX UMETA(DisplayName = "DefaultMAX")
 };
@@ -62,6 +63,9 @@ struct FItemRarityTable : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 CustomDepthStencil;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float RarityFactor;
 };
 
 UCLASS()
@@ -268,10 +272,6 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
 	int32 SlotIndex;
 
-	/** True when the Character's inventory is full */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
-	bool bCharacterInventoryFull;
-
 	/** Item Rarity data table */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
 	class UDataTable* ItemRarityDataTable;
@@ -297,7 +297,6 @@ public:
 	FORCEINLINE int32 GetSlotIndex() const { return SlotIndex; }
 	FORCEINLINE void SetSlotIndex(int32 Index) { SlotIndex = Index; }
 	FORCEINLINE void SetCharacter(AShooterCharacter* Char) { Character = Char; }
-	FORCEINLINE void SetCharacterInventoryFull(bool bFull) { bCharacterInventoryFull = bFull; }
 	FORCEINLINE void SetItemName(FString Name) { ItemName = Name; }
 	// Set item icon for the inventory
 	FORCEINLINE void SetIconItem(UTexture2D* Icon) { IconItem = Icon; }
@@ -308,8 +307,10 @@ public:
 	FORCEINLINE void SetDynamicMaterialInstance(UMaterialInstanceDynamic* Instance) { DynamicMaterialInstance = Instance; }
 	FORCEINLINE UMaterialInstanceDynamic* GetDynamicMaterialInstance() const { return DynamicMaterialInstance; }
 	FORCEINLINE FLinearColor GetGlowColor() const { return RarityData.GlowColor; }
+	FORCEINLINE float GetRarityFactor() const { return RarityData.RarityFactor; }
 	FORCEINLINE int32 GetMaterialIndex() const { return MaterialIndex; }
 	FORCEINLINE void SetMaterialIndex(int32 Index) { MaterialIndex = Index; }
+	FORCEINLINE EItemRarity GetItemRarity() const { return ItemRarity; }
 
 	/** Called from the AShooterCharacter class */
 	void StartItemCurve(AShooterCharacter* Char, bool bForcePlaySound = false);
@@ -318,4 +319,7 @@ public:
 	virtual void DisableCustomDepth();
 
 	void DisableGlowMaterial();
+
+	void SetItemRarity(EItemRarity Rarity);
+	void SetItemRarityData();
 };

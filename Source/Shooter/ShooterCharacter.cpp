@@ -183,7 +183,7 @@ void AShooterCharacter::BeginPlay()
 	// Spawn the default weapon and attach it to the mesh
 	EquipWeapon(SpawnDefaultWeapon());
 	Inventory.SetNum(INVENTORY_CAPACITY);
-	Inventory[INVENTORY_CAPACITY - 1] = EquippedWeapon;
+	Inventory[DefaultSlotIndex] = EquippedWeapon;
 	EquippedWeapon->DisableCustomDepth();
 	EquippedWeapon->DisableGlowMaterial();
 	EquippedWeapon->SetCharacter(this);
@@ -643,17 +643,6 @@ void AShooterCharacter::TraceForItems()
 				// Show Item's Pickup Widet
 				TraceHitItem->GetPickupWidget()->SetVisibility(true);
 				TraceHitItem->EnableCustomDepth();
-
-
-				if (Inventory.Num() >= INVENTORY_CAPACITY)
-				{
-					// Inventory is full
-					TraceHitItem->SetCharacterInventoryFull(true);
-				}
-				else
-				{
-					TraceHitItem->SetCharacterInventoryFull(false);
-				}
 			}
 
 			// We hit an AItem last frame
@@ -673,13 +662,13 @@ void AShooterCharacter::TraceForItems()
 		}
 		else
 		{
-			if(TraceHitItem)
-			if (TraceHitItemLastFrame)
-			{
-				TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
-				TraceHitItemLastFrame->DisableCustomDepth();
-				TraceHitItemLastFrame = nullptr;
-			}
+			if (TraceHitItem)
+				if (TraceHitItemLastFrame)
+				{
+					TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+					TraceHitItemLastFrame->DisableCustomDepth();
+					TraceHitItemLastFrame = nullptr;
+				}
 			TraceHitItem = nullptr;
 		}
 	}
@@ -701,7 +690,17 @@ AWeapon* AShooterCharacter::SpawnDefaultWeapon()
 	{
 		// Spawn the Weapon
 		AWeapon* DefaultWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
-		DefaultWeapon->SetSlotIndex(INVENTORY_CAPACITY - 1);
+		if (DefaultWeapon->GetBoneToHide() != FName(""))
+		{
+			DefaultWeapon->GetItemMesh()->UnHideBoneByName(DefaultWeapon->GetBoneToHide());
+		}
+		DefaultWeapon->SetSlotIndex(DefaultSlotIndex);
+		DefaultWeapon->SetItemRarity(EItemRarity::EIR_Default);
+		DefaultWeapon->SetWeaponType(EWeaponType::EWT_Pistol);
+		if (DefaultWeapon->GetBoneToHide() != FName(""))
+		{
+			DefaultWeapon->GetItemMesh()->HideBoneByName(DefaultWeapon->GetBoneToHide(), EPhysBodyOp::PBO_None);
+		}
 		return DefaultWeapon;
 	}
 
@@ -746,30 +745,46 @@ void AShooterCharacter::EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping)
 	}
 }
 
-void AShooterCharacter::DropWeapon(int32 SelectedIndex)
+void AShooterCharacter::DropWeapon(int32 SelectedIndex, bool bSwapping)
 {
-	
+
 	if (!EquippedWeapon)return;
+	AWeapon* SelectedWeapon = Cast<AWeapon>(Inventory[SelectedIndex]);
+	if (!SelectedWeapon) return;
+	// Init slot index of dropped weapon
 
-	if (SelectedIndex == EquippedWeapon->GetSlotIndex()) // Drop EquippedWeapon
+	FDetachmentTransformRules DetachmentTransfromRules(EDetachmentRule::KeepWorld, true);
+	SelectedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransfromRules);
+
+	SelectedWeapon->SetItemState(EItemState::EIS_Falling);
+	SelectedWeapon->ThrowWeapon();
+
+	if (bSwapping) // is swapping now => when E Key pressed and no more slot
 	{
-		FDetachmentTransformRules DetachmentTransfromRules(EDetachmentRule::KeepWorld, true);
-		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransfromRules);
-
-		EquippedWeapon->SetItemState(EItemState::EIS_Falling);
-		EquippedWeapon->ThrowWeapon();
+		// Drop EquippedWeapon Or Drop Inventory Weapon
+	}
+	else // is not swapping now => when Q key pressed and no need to swap
+	{
 		// Eqip Next Weapon
+		int32 WeaponIndex = -1;
+		for (WeaponIndex = 0; WeaponIndex < INVENTORY_CAPACITY; ++WeaponIndex)
+		{
+			if (WeaponIndex == SelectedIndex)continue;
+			if (Inventory[WeaponIndex] != nullptr) break;
+		}
+		if (WeaponIndex >= 0 && WeaponIndex < INVENTORY_CAPACITY)
+		{
+			// Equip next weapon
+			AWeapon* NewWeapon = Cast<AWeapon>(Inventory[WeaponIndex]);
+			if (NewWeapon)
+			{
+				EquipWeapon(NewWeapon);
+			}
+		}
 
+		Inventory[SelectedIndex] = nullptr;
 	}
-	else // Drop Inventory Weapon
-	{
-		FDetachmentTransformRules DetachmentTransfromRules(EDetachmentRule::KeepWorld, true);
-		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransfromRules);
-		Inventory[SelectedIndex]->SetItemState(EItemState::EIS_Falling);
-		Cast<AWeapon>(Inventory[SelectedIndex])->ThrowWeapon();
-	}
-	//EquippedWeapon = nullptr;
-
+	SelectedWeapon->SetSlotIndex(-1);
 }
 
 void AShooterCharacter::SelectButtonPressed()
@@ -793,20 +808,25 @@ void AShooterCharacter::SwapWeapon(AWeapon* WeaponToSwap, int32 SelectedIndex)
 	//	Inventory[EquippedWeapon->GetSlotIndex()] = WeaponToSwap;
 	//	WeaponToSwap->SetSlotIndex(EquippedWeapon->GetSlotIndex());
 	//}
-	Inventory[SelectedIndex] = WeaponToSwap;
-	WeaponToSwap->SetSlotIndex(SelectedIndex);
+	bool bSwapWithEquippedWeapon = (SelectedIndex == EquippedWeapon->GetSlotIndex());
 
 	// TODO:: Pickedup or Equip weapon
-	if (SelectedIndex == EquippedWeapon->GetSlotIndex()) // Equip weapon
+	if (bSwapWithEquippedWeapon) // Swap with Equipped Weapon
 	{
-		DropWeapon(SelectedIndex);
-
+		DropWeapon(SelectedIndex, true);
 		EquipWeapon(WeaponToSwap, true);
 	}
-	else // just Picked up weapon
+	else // Swap with Inventory Weapon
 	{
-		DropWeapon(SelectedIndex);
+		const USkeletalMeshSocket* HandSocket = GetMesh()->GetSocketByName(
+			FName("RightHandSocket"));
+		const FTransform SocketTransform = HandSocket->GetSocketTransform(GetMesh());
+		Inventory[SelectedIndex]->GetItemMesh()->SetWorldTransform(SocketTransform);
+		DropWeapon(SelectedIndex, true);
+		WeaponToSwap->SetItemState(EItemState::EIS_Pickedup);
 	}
+	Inventory[SelectedIndex] = WeaponToSwap;
+	WeaponToSwap->SetSlotIndex(SelectedIndex);
 
 	TraceHitItem = nullptr;
 	TraceHitItemLastFrame = nullptr;
@@ -1070,7 +1090,15 @@ void AShooterCharacter::FinishReloading()
 	const auto AmmoType{ EquippedWeapon->GetAmmoType() };
 
 	// Update AmmoMap
-	if (AmmoMap.Contains(AmmoType))
+	if (EquippedWeapon->GetItemRarity() == EItemRarity::EIR_Default)
+	{
+		// default weapon does not use any ammo
+		const int32 MagEmptySpace =
+			EquippedWeapon->GetMagazineCapacity()
+			- EquippedWeapon->GetAmmo();
+		EquippedWeapon->ReloadAmmo(MagEmptySpace);
+	}
+	else if (AmmoMap.Contains(AmmoType))
 	{
 		// Amount of ammo the Character is carrying of the EquippedWeapon type
 		int32 CarriedAmmo = AmmoMap[AmmoType];
@@ -1262,17 +1290,17 @@ void AShooterCharacter::ThreeKeyPressed()
 void AShooterCharacter::DropKeyPressed()
 {
 	if (CombatState != ECombatState::ECS_Unoccupied) return;
-	if (!EquippedWeapon || EquippedWeapon->GetSlotIndex() == INVENTORY_CAPACITY - 1) return;
-	DropWeapon(EquippedWeapon->GetSlotIndex());
+	if (!EquippedWeapon || EquippedWeapon->GetSlotIndex() == DefaultSlotIndex) return;
+	DropWeapon(EquippedWeapon->GetSlotIndex(), false);
 }
 
 void AShooterCharacter::ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex)
 {
-	const bool bChanExchangeItems =
+	const bool bCanExchangeItems =
 		(CurrentItemIndex != NewItemIndex) &&
 		(Inventory[NewItemIndex] != nullptr) &&
 		(CombatState == ECombatState::ECS_Unoccupied || CombatState == ECombatState::ECS_Equipping);
-	if (bChanExchangeItems)
+	if (bCanExchangeItems)
 	{
 		if (bAiming)
 		{
@@ -1302,9 +1330,16 @@ int32 AShooterCharacter::GetChangableInventorySlot(bool& OutHasEmptySlot)
 	{
 		OutHasEmptySlot = false;
 		ChangableIndex = EquippedWeapon->GetSlotIndex();
-		if (ChangableIndex == INVENTORY_CAPACITY - 1) // if DefaultWeapon is equipped
+		if (ChangableIndex == DefaultSlotIndex) // if DefaultWeapon is equipped
 		{
-			ChangableIndex = 0;
+			if (DefaultSlotIndex == 0)
+			{
+				ChangableIndex = 1;
+			}
+			else
+			{
+				ChangableIndex = 0;
+			}
 		}
 	}
 
@@ -1483,7 +1518,7 @@ void AShooterCharacter::GetPickupItem(AItem* Item)
 				Inventory[WeaponIndex] = Weapon;
 				Weapon->SetItemState(EItemState::EIS_Pickedup);
 			}
-			else // Inventory is full! Swap with EquippedWeapon
+			else // Inventory is full! Swap with WeaponIndex
 			{
 				SwapWeapon(Weapon, WeaponIndex);
 			}

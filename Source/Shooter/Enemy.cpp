@@ -15,6 +15,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "Weapon.h"
 
 // Sets default values
 AEnemy::AEnemy() :
@@ -26,7 +27,7 @@ AEnemy::AEnemy() :
 	HitReactTimeMax(1.f),
 	HitNumberDestroyTime(1.5f),
 	bStunned(false),
-	StunChance(0.5f),
+	StunResist(0.5f),
 	AttackLFast(TEXT("AttackLFast")),
 	AttackRFast(TEXT("AttackRFast")),
 	AttackL(TEXT("AttackL")),
@@ -392,7 +393,7 @@ void AEnemy::StunCharacter(AShooterCharacter* Victim)
 	if (Victim)
 	{
 		const float Stun{ FMath::FRandRange(0.f,1.f) };
-		if (Stun <= Victim->GetStunChance())
+		if (Stun < Victim->GetStunChance())
 		{
 			Victim->Stun();
 		}
@@ -521,7 +522,13 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 
 	// Determine whether bullet hit stuns
 	const float Stunned = FMath::FRandRange(0.f, 1.f);
-	if (Stunned <= StunChance)
+	const AShooterCharacter* Player = Cast<AShooterCharacter>(DamageCauser);
+	float FinalStunRate;
+	if (Player)
+	{
+		FinalStunRate = Player->GetEquippedWeapon()->GetRarityFactor() - StunResist;
+	}
+	if (Stunned < FinalStunRate)
 	{
 		// Stun the Enemy
 		PlayHitMontage(FName("HitReactFront"));

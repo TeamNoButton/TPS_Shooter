@@ -129,7 +129,7 @@ protected:
 	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
 
 	/** Detach weapon and let it fall to the ground */
-	void DropWeapon(int32 SelectedIndex);
+	void DropWeapon(int32 SelectedIndex, bool bSwapping);
 
 	void SelectButtonPressed();
 	void SelectButtonReleased();
@@ -523,6 +523,8 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* DeathMontage;
 
+	const int32 DefaultSlotIndex = INVENTORY_CAPACITY - 1;
+
 
 public:
 	/** Returns CameraBoom subobject */
@@ -562,6 +564,7 @@ public:
 	FORCEINLINE AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
 	FORCEINLINE USoundCue* GetMeleeImpactSound() const { return MeleeImpactSound; }
 	FORCEINLINE UParticleSystem* GetBloodParticles() const { return BloodParticles; }
+	FORCEINLINE int32 GetDefaultSlotIndex() const { return DefaultSlotIndex; }
 	
 	void Stun();
 	FORCEINLINE float GetStunChance() const { return StunChance; }

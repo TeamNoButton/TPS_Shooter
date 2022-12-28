@@ -87,6 +87,9 @@ struct FWeaponDataTable : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float HeadShotDamage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float StunRate;
 };
 
 /**
@@ -230,6 +233,10 @@ private:
 	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	float HeadShotDamage;
 
+	/** Rate amount of causing stun */
+	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float StunRate;
+
 public:
 	/** Adds an impulse to the Weapon */
 	void ThrowWeapon();
@@ -252,6 +259,7 @@ public:
 	FORCEINLINE bool GetAutomatic() const { return bAutomatic; }
 	FORCEINLINE float GetDamage() const { return Damage; }
 	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; }
+	FORCEINLINE FName GetBoneToHide() const { return BoneToHide; }
 
 	void StartSlideTimer();
 
@@ -260,4 +268,7 @@ public:
 	FORCEINLINE void SetMovingClip(bool Move) { bMovingClip = Move; }
 
 	bool ClipIsFull();
+
+	void SetWeaponType(EWeaponType Type);
+	void SetWeaponData();
 };

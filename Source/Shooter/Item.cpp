@@ -35,8 +35,7 @@ AItem::AItem() :
 	FresnelExponent(3.f),
 	FresnelReflectFraction(4.f),
 	// Inventory variables
-	SlotIndex(0),
-	bCharacterInventoryFull(false)
+	SlotIndex(0)
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -392,55 +391,8 @@ void AItem::InitializeCustomDepth()
 
 void AItem::OnConstruction(const FTransform& Transform)
 {
-	// Load the data in the Item Rarity Data Table
-
-	// Path to the Item Rarity Data Table
-	FString RarityTablePath(TEXT("DataTable'/Game/_Game/DataTable/ItemRarityDataTable.ItemRarityDataTable'"));
-	UDataTable* RarityTableObject = Cast<UDataTable>(StaticLoadObject(UDataTable::StaticClass(), nullptr, *RarityTablePath));
-	if (RarityTableObject)
-	{
-		FItemRarityTable* RarityRow = nullptr;
-		switch (ItemRarity)
-		{
-		case EItemRarity::EIR_Damaged:
-			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Damaged"), TEXT(""));
-			break;
-		case EItemRarity::EIR_Common:
-			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Common"), TEXT(""));
-			break;
-		case EItemRarity::EIR_Uncommon:
-			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Uncommon"), TEXT(""));
-			break;
-		case EItemRarity::EIR_Rare:
-			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Rare"), TEXT(""));
-			break;
-		case EItemRarity::EIR_Legendary:
-			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Legendary"), TEXT(""));
-			break;
-		}
-		if (RarityRow)
-		{
-			RarityData.GlowColor = RarityRow->GlowColor;
-			RarityData.LightColor = RarityRow->LightColor;
-			RarityData.DarkColor = RarityRow->DarkColor;
-			RarityData.NumberOfStars = RarityRow->NumberOfStars;
-			RarityData.IconBackground = RarityRow->IconBackground;
-			RarityData.CustomDepthStencil = RarityRow->CustomDepthStencil;
-			if (GetItemMesh())
-			{
-				GetItemMesh()->SetCustomDepthStencilValue(RarityData.CustomDepthStencil);
-			}
-		}
-	}
-
-	if (MaterialInstance)
-	{
-		DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MaterialInstance, this);
-		DynamicMaterialInstance->SetVectorParameterValue(TEXT("FresnelColor"), RarityData.GlowColor);
-		ItemMesh->SetMaterial(MaterialIndex, DynamicMaterialInstance);
-
-		EnableGlowMaterial();
-	}
+	Super::OnConstruction(Transform);
+	SetItemRarity(ItemRarity);
 }
 
 
@@ -487,6 +439,64 @@ void AItem::DisableGlowMaterial()
 	if (DynamicMaterialInstance)
 	{
 		DynamicMaterialInstance->SetScalarParameterValue(TEXT("GlowBlendAlpha"), 1);
+	}
+}
+
+void AItem::SetItemRarity(EItemRarity Rarity)
+{
+	ItemRarity = Rarity;
+	SetItemRarityData();
+}
+
+void AItem::SetItemRarityData()
+{
+	// Load the data in the Item Rarity Data Table
+
+	// Path to the Item Rarity Data Table
+	//FString RarityTablePath(TEXT("DataTable'/Game/_Game/DataTable/ItemRarityDataTable.ItemRarityDataTable'"));
+	//UDataTable* RarityTableObject = Cast<UDataTable>(StaticLoadObject(UDataTable::StaticClass(), nullptr, *RarityTablePath));
+	if (ItemRarityDataTable)
+	{
+		FItemRarityTable* RarityRow = nullptr;
+		switch (ItemRarity)
+		{
+		case EItemRarity::EIR_Default:
+			RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Default"), TEXT(""));
+			break;
+		case EItemRarity::EIR_Damaged:
+			RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Damaged"), TEXT(""));
+			break;
+		case EItemRarity::EIR_Common:
+			RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Common"), TEXT(""));
+			break;
+		case EItemRarity::EIR_Uncommon:
+			RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Uncommon"), TEXT(""));
+			break;
+		case EItemRarity::EIR_Rare:
+			RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Rare"), TEXT(""));
+			break;
+		case EItemRarity::EIR_Legendary:
+			RarityRow = ItemRarityDataTable->FindRow<FItemRarityTable>(FName("Legendary"), TEXT(""));
+			break;
+		}
+		if (RarityRow)
+		{
+			RarityData = *RarityRow;
+
+			if (GetItemMesh())
+			{
+				GetItemMesh()->SetCustomDepthStencilValue(RarityData.CustomDepthStencil);
+			}
+		}
+	}
+
+	if (MaterialInstance)
+	{
+		DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MaterialInstance, this);
+		DynamicMaterialInstance->SetVectorParameterValue(TEXT("FresnelColor"), RarityData.GlowColor);
+		ItemMesh->SetMaterial(MaterialIndex, DynamicMaterialInstance);
+
+		EnableGlowMaterial();
 	}
 }
 

@@ -192,7 +192,7 @@ private:
 
 	/** Chance of being stunned. 0: no stun chance, 1: 100% stun chance */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float StunChance;
+	float StunResist;
 
 	/** True when in attack range */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
