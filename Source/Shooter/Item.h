@@ -272,10 +272,6 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
 	UTexture2D* AmmoItem;
 
-	/** Slot in the Inventory array */
-	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
-	int32 SlotIndex;
-
 	/** Item Rarity data table */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
 	class UDataTable* ItemRarityDataTable;
@@ -328,4 +324,8 @@ public:
 	virtual void DisableCustomDepth();
 
 	void DisableGlowMaterial();
+
+
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	int32 SlotIndex;
 };

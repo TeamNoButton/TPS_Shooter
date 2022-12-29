@@ -62,6 +62,7 @@ AItem::AItem() :
 
 	SetReplicateMovement(bReplicateItem);
 	ItemMesh->SetIsReplicated(true);
+	bReplicates = true;
 	
 }
 

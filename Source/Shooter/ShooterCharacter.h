@@ -127,14 +127,21 @@ protected:
 	/** Spawns a default weapon and equips it */
 	class AWeapon* SpawnDefaultWeapon();
 
-	UFUNCTION(NetMulticast, Reliable)
-		void ResSpawnDefaultWeapon();
-	void ResSpawnDefaultWeapon_Implementation();
-
-
 
 	/** Takes a weapon and attaches it to the mesh */
 	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
+
+
+	UFUNCTION(Server, Reliable)
+		void ReqEquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
+	void ReqEquipWeapon_Implementation(AWeapon* WeaponToEquip, bool bSwapping = false);
+
+	UFUNCTION(NetMulticast, Reliable)
+		void ResEquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
+	void ResEquipWeapon_Implementation(AWeapon* WeaponToEquip, bool bSwapping = false);
+
+
+
 
 	UFUNCTION(Server, Reliable)
 	void ReqPressSelect(AItem* Item);
@@ -283,6 +290,8 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void ResBulletHit(FHitResult BeamHit);
 	void ResBulletHit_Implementation( FHitResult BeamHit);
+
+
 
 	UFUNCTION(Server, Reliable)
 		void SetFiringBullet(bool state);
@@ -610,11 +619,11 @@ private:
 	float EquipSoundResetTime;
 
 	/** An array of AItems for our Inventory */
-	UPROPERTY(VisibleAnywhere,  BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated,  BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
 	TArray<AItem*> Inventory;
 
 	
-	const int32 INVENTORY_CAPACITY{ 3 };
+	int32 INVENTORY_CAPACITY{ 3 };
 
 	/** Delegate for sending slot information to InventoryBar when equipping */
 	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"))
@@ -669,7 +678,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	FRotator Pitch;
 
-	const int32 DefaultSlotIndex = INVENTORY_CAPACITY - 1;
+	int32 DefaultSlotIndex = INVENTORY_CAPACITY - 1;
 
 public:
 	UPROPERTY()
