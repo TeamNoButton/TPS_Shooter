@@ -619,10 +619,11 @@ private:
 	float EquipSoundResetTime;
 
 	/** An array of AItems for our Inventory */
-	UPROPERTY(VisibleAnywhere, Replicated,  BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,   BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
 	TArray<AItem*> Inventory;
 
 	
+	UPROPERTY(Replicated, meta = (AllowPrivateAccess = "true"))
 	int32 INVENTORY_CAPACITY{ 3 };
 
 	/** Delegate for sending slot information to InventoryBar when equipping */

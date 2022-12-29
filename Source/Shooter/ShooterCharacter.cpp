@@ -705,8 +705,8 @@ void AShooterCharacter::EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping)
 
 		if (EquippedWeapon == nullptr)
 		{
-			// -1 == no EquippedWeapon yet. No need to reverse the icon animation
-			EquipItemDelegate.Broadcast(2, WeaponToEquip->SlotIndex);
+			// 2 == no EquippedWeapon yet. No need to reverse the icon animation
+			EquipItemDelegate.Broadcast(-1, WeaponToEquip->SlotIndex);
 		}
 		else if (!bSwapping)
 		{
@@ -1086,7 +1086,7 @@ void AShooterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AShooterCharacter, EquippedWeapon);
 	DOREPLIFETIME(AShooterCharacter, CurrentCapsuleHalfHeight);
 	DOREPLIFETIME(AShooterCharacter, ReloadMontage);	
-	DOREPLIFETIME(AShooterCharacter, Inventory);
+	DOREPLIFETIME(AShooterCharacter, INVENTORY_CAPACITY);
 	
 }
 
@@ -1528,7 +1528,7 @@ void AShooterCharacter::ResExchangeInventoryItems_Implementation(int32 CurrentIt
 int32 AShooterCharacter::GetChangableInventorySlot(bool& OutHasEmptySlot)
 {
 	
-		int32 ChangableIndex = -1;
+	int32 ChangableIndex = -1;
 	for (int32 i = 0; i < INVENTORY_CAPACITY; i++) // 0, 1, 2
 	{
 		if (Inventory[i] == nullptr)

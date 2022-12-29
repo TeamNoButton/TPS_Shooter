@@ -191,6 +191,8 @@ void AEnemy::Die()
 			true);
 		EnemyController->StopMovement();
 	}
+	
+	
 	//ReqDie();
 }
 //
