@@ -16,17 +16,17 @@ class SHOOTER_API AShooterPlayerController : public APlayerController
 public:
 	AShooterPlayerController();
 
-
 protected:
+
 	virtual void BeginPlay() override;
-//
-//	virtual void OnPossess(APawn* PawnToPossess) override;
-//
-//	UFUNCTION(Server, Reliable)
-//		void ReqOnPossess(const FString& Name);
-//	void ReqOnPossess_Implementation(const FString& Name);
-//
-//	UFUNCTION(NetMulticast, Reliable)
-//		void ResOnPossess();
-//	void ResOnPossess_Implementation();
+
+	void ShooterMainWidget(TSubclassOf<UUserWidget> NewWidget);
+
+private :
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Widget, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UUserWidget> ShooterWidget;
+
+	UPROPERTY()
+	UUserWidget* CurrentWidget;
+
 };

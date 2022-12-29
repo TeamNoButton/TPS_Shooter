@@ -7,8 +7,8 @@
 #include "BulletHitInterface.h"
 #include "Enemy.generated.h"
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(FUpdateHpDelegate, float, float);
 
+DECLARE_MULTICAST_DELEGATE_TwoParams(FUpdateHpDelegate, float, float);
 UCLASS()
 class SHOOTER_API AEnemy : public ACharacter, public IBulletHitInterface
 {
@@ -30,6 +30,15 @@ protected:
 	void HideHealthBar();
 
 	void Die();
+	//UFUNCTION(Server, Reliable)
+	//void ReqDie();
+	//void ReqDie_Implementation();
+	//
+	//UFUNCTION(NetMulticast, Reliable)
+	//void ResDie();
+	//void ResDie_Implementation();
+
+	
 
 	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
 
@@ -38,11 +47,11 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void StoreHitNumber(UUserWidget* HitNumber, FVector Location);
 
-	UFUNCTION()
+	UFUNCTION() // bind a function to a timer that has input parameters, it needs to be a UFUNTION.
 	void DestroyHitNumber(UUserWidget* HitNumber);
 
 	void UpdateHitNumbers();
-
+	
 	/** Called when something overlaps with the agro sphere */
 	UFUNCTION()
 	void AgroSphereOverlap(
@@ -56,6 +65,7 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void SetStunned(bool Stunned);
 
+	/** Called when something overlaps with the Combat Range Sphere */
 	UFUNCTION()
 	void CombatRangeOverlap(
 		UPrimitiveComponent* OverlappedComponent,
@@ -65,26 +75,48 @@ protected:
 		bool bFromSweep,
 		const FHitResult& SweepResult);
 
+	/** Called when end overlapping the Combat Range Sphere */
 	UFUNCTION()
-	void CombatRangeEndOverlap(
-		UPrimitiveComponent* OverlappedComponent,
+	void CombatRangeEndOverlap(UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex);
+		int32 OtherBodyIndex
+	);
 
 	UFUNCTION(BlueprintCallable)
-	void PlayAttackMontage(FName Section, float PlayRate);
+	void PlayAttackMontage(FName Section, float PlayRate = 1.0f);
+
+	UFUNCTION(Server, Reliable)
+	void ReqPlayAttackMontage(FName Section, float PlayRate = 1.0f);
+	void ReqPlayAttackMontage_Implementation(FName Section, float PlayRate = 1.0f);
+
+
+	UFUNCTION(NetMulticast, Reliable)
+	void ResPlayAttackMontage(FName Section, float PlayRate = 1.0f);
+	void ResPlayAttackMontage_Implementation(FName Section, float PlayRate = 1.0f);
+
 
 	UFUNCTION(BlueprintPure)
 	FName GetAttackSectionName();
 
 	UFUNCTION()
-	void OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	
-	UFUNCTION()
-	void OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnLeftWeaponOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
 
-	// Activate/deactivate collision for weapon boxes
+	UFUNCTION()
+	void OnRightWeaponOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
 	UFUNCTION(BlueprintCallable)
 	void ActivateLeftWeapon();
 	UFUNCTION(BlueprintCallable)
@@ -114,29 +146,29 @@ protected:
 
 	void UpdateEnemyHp(float CurHp, float MaxHp);
 
-	UFUNCTION()
-	void OnRep_EnemyHealth();
-	UFUNCTION()
-	void OnRep_EnemyMaxHealth();
 
-	void UpdateHP(float CurHp, float MaxHP);
+	UFUNCTION()
+		void OnRep_EnemyHealth();
+	UFUNCTION()
+		void OnRep_EnemyMaxHealth();
+
 
 private:
-	/** Particles to spawn when hit by bullets */
+	/** Particles to spawn when hiy by bullets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class UParticleSystem* ImpactParticles;
+	class UParticleSystem* ImpactParticle;
 
 	/** Sound to play when hit by bullets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* ImpactSound;
 
 	/** Current health of the enemy */
-	UPROPERTY(ReplicatedUsing = OnRep_EnemyHealth, EditAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float EnemyHealth;
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_EnemyHealth, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float Health;
 
 	/** Maximum health of the enemy */
-	UPROPERTY(ReplicatedUsing = OnRep_EnemyMaxHealth, EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float EnemyMaxHealth;
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_EnemyMaxHealth, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MaxHealth;
 
 	/** Name of the head bone */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -156,10 +188,11 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float HitReactTimeMin;
-
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float HitReactTimeMax;
 
+	UPROPERTY(Replicated)
 	bool bCanHitReact;
 
 	/** Map to store HitNumber widgets and their hit locations */
@@ -178,7 +211,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Behavior Tree", meta = (AllowPrivateAccess = "true", MakeEditWidget = "true"))
 	FVector PatrolPoint;
 
-	/** Second point for the enemy to move to */
+	/** Second Point for the enemy to move to */
 	UPROPERTY(EditAnywhere, Category = "Behavior Tree", meta = (AllowPrivateAccess = "true", MakeEditWidget = "true"))
 	FVector PatrolPoint2;
 
@@ -194,9 +227,9 @@ private:
 
 	/** Chance of being stunned. 0: no stun chance, 1: 100% stun chance */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float StunChance;
+	float StunResist;
 
-	/** True when in attack range; time to attack! */
+	/** True when in attack range */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bInAttackRange;
 
@@ -204,11 +237,11 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	USphereComponent* CombatRangeSphere;
 
-	/** Montage containing different attacks */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	/** Montage containing different attack animations */
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* AttackMontage;
 
-	/** The four attack montage section names */
+	/** The for attack montage section names */
 	FName AttackLFast;
 	FName AttackRFast;
 	FName AttackL;
@@ -220,11 +253,12 @@ private:
 
 	/** Collision volume for the right weapon */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UBoxComponent* RightWeaponCollision;
+	class UBoxComponent* RightWeaponCollision;
 
 	/** Base damage for enemy */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float BaseDamage;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FName LeftWeaponSocket;
@@ -252,16 +286,15 @@ private:
 	FTimerHandle DeathTimer;
 
 	/** Time after death until Destroy */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float DeathTime;
 
-
-	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated)
 	UAnimInstance* AnimInstance;
 
 	FUpdateHpDelegate UpdateHpDelegate;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -279,5 +312,4 @@ public:
 
 	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
 
-	
 };

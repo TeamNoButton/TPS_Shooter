@@ -17,7 +17,7 @@ AAmmo::AAmmo()
 	GetPickupWidget()->SetupAttachment(GetRootComponent());
 	GetAreaSphere()->SetupAttachment(GetRootComponent());
 
-	AmmoCollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AmmoCollisionSphere"));
+	AmmoCollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AmmoCollsionSphere"));
 	AmmoCollisionSphere->SetupAttachment(GetRootComponent());
 	AmmoCollisionSphere->SetSphereRadius(50.f);
 }
@@ -25,7 +25,6 @@ AAmmo::AAmmo()
 void AAmmo::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void AAmmo::BeginPlay()
@@ -48,6 +47,16 @@ void AAmmo::SetItemProperties(EItemState State)
 		AmmoMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		AmmoMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		break;
+	case EItemState::EIS_EquipInterping:
+		// Set mesh properties
+		AmmoMesh->SetSimulatePhysics(false);
+		AmmoMesh->SetEnableGravity(false);
+		AmmoMesh->SetVisibility(false);
+		AmmoMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		AmmoMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+	case EItemState::EIS_Pickedup:
+		break;
 	case EItemState::EIS_Equipped:
 		// Set mesh properties
 		AmmoMesh->SetSimulatePhysics(false);
@@ -58,21 +67,14 @@ void AAmmo::SetItemProperties(EItemState State)
 		break;
 	case EItemState::EIS_Falling:
 		// Set mesh properties
-		AmmoMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		AmmoMesh->SetSimulatePhysics(true);
 		AmmoMesh->SetEnableGravity(true);
+		AmmoMesh->SetVisibility(true);
 		AmmoMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		AmmoMesh->SetCollisionResponseToChannel(
 			ECollisionChannel::ECC_WorldStatic,
 			ECollisionResponse::ECR_Block);
-		break;
-	case EItemState::EIS_EquipInterping:
-		// Set mesh properties
-		AmmoMesh->SetSimulatePhysics(false);
-		AmmoMesh->SetEnableGravity(false);
-		AmmoMesh->SetVisibility(true);
-		AmmoMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		AmmoMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		AmmoMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		break;
 	}
 }

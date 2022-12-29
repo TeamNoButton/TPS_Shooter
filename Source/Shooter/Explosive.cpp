@@ -7,13 +7,10 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "GameFramework/Character.h"
 #include "Components/SphereComponent.h"
-#include "Enemy.h"
-#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
-#include "Components/PrimitiveComponent.h"
 
 // Sets default values
-AExplosive::AExplosive() :
+AExplosive::AExplosive() : 
 	Damage(100.f)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -25,64 +22,14 @@ AExplosive::AExplosive() :
 	OverlapSphere = CreateDefaultSubobject<USphereComponent>(TEXT("OverlapSphere"));
 	OverlapSphere->SetupAttachment(GetRootComponent());
 
-
-	SetReplicateMovement(true);
-	SetReplicates(true);
-	GetMesh()->SetSimulatePhysics(true);
+	bReplicates = true;
+	SetReplicateMovement(bReplicates);
 }
 
 // Called when the game starts or when spawned
 void AExplosive::BeginPlay()
 {
 	Super::BeginPlay();
-}
-
-void AExplosive::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(AExplosive, ExplodeParticles);
-	DOREPLIFETIME(AExplosive, ImpactSound);
-	DOREPLIFETIME(AExplosive, ExplosiveMesh);
-	
-
-}
-
-void AExplosive::ReqDestroy_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController)
-{
-	// Apply explosive damage
-	TArray<AActor*> OverlappingActors;
-	GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
-
-	for (auto Actor : OverlappingActors)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Actor damaged by explosive: %s"), *Actor->GetName());
-
-		UGameplayStatics::ApplyDamage(
-			Actor,
-			Damage,
-			ShooterController,
-			Shooter,
-			UDamageType::StaticClass()
-		);
-	}
-
-	Destroy();
-	ResDestroy(HitResult, Shooter, ShooterController);
-}
-
-void AExplosive::ResDestroy_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController)
-{
-
-	if (ImpactSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
-	}
-	if (ExplodeParticles)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplodeParticles, HitResult.Location, FRotator(0.f), true);
-	}
-
 	
 }
 
@@ -95,36 +42,31 @@ void AExplosive::Tick(float DeltaTime)
 
 void AExplosive::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController)
 {
-	//if (ImpactSound)
-	//{
-	//	UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
-	//}
-	//if (ExplodeParticles)
-	//{
-	//	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplodeParticles, HitResult.Location, FRotator(0.f), true);
-	//}
+	if (ImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	}
+	if (ExplodeParticles)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplodeParticles, HitResult.Location, FRotator(0.f), true);
+	}
+	
+	// Apply explosive damage
+	TArray<AActor*> OverlappingActors;
+	GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
+	
+	for (auto Actor : OverlappingActors)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Actor damaged by explosive: %s"), *Actor->GetName());
+		UGameplayStatics::ApplyDamage(
+			Actor,
+			Damage,
+			ShooterController,
+			Shooter,
+			UDamageType::StaticClass());
+	}
 
-	//// Apply explosive damage
-	//TArray<AActor*> OverlappingActors;
-	//GetOverlappingActors(OverlappingActors, ACharacter::StaticClass());
+	Destroy();
 
-	//for (auto Actor : OverlappingActors)
-	//{
-	//	UE_LOG(LogTemp, Warning, TEXT("Actor damaged by explosive: %s"), *Actor->GetName());
-
-	//	UGameplayStatics::ApplyDamage(
-	//		Actor,
-	//		Damage,
-	//		ShooterController,
-	//		Shooter,
-	//		UDamageType::StaticClass()
-	//	);
-	//}
-
-	//Destroy();
-
-	ReqDestroy(HitResult, Shooter, ShooterController);
 }
-
-
 

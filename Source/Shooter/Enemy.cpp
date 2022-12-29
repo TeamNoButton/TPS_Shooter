@@ -7,10 +7,12 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "DrawDebugHelpers.h"
 #include "EnemyController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/SphereComponent.h"
 #include "ShooterCharacter.h"
+#include "Weapon.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
@@ -18,15 +20,15 @@
 
 // Sets default values
 AEnemy::AEnemy() :
-	EnemyHealth(100.f),
-	EnemyMaxHealth(100.f),
+	Health(100.f),
+	MaxHealth(100.f),
 	HealthBarDisplayTime(4.f),
 	bCanHitReact(true),
-	HitReactTimeMin(.5f),
-	HitReactTimeMax(3.f),
+	HitReactTimeMin(0.5f),
+	HitReactTimeMax(1.f),
 	HitNumberDestroyTime(1.5f),
 	bStunned(false),
-	StunChance(0.5f),
+	StunResist(0.5f),
 	AttackLFast(TEXT("AttackLFast")),
 	AttackRFast(TEXT("AttackRFast")),
 	AttackL(TEXT("AttackL")),
@@ -37,9 +39,10 @@ AEnemy::AEnemy() :
 	bCanAttack(true),
 	AttackWaitTime(1.f),
 	bDying(false),
-	DeathTime(4.f)
+	DeathTime(4.f),
+	AnimInstance(nullptr)
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	// Create the Agro Sphere
@@ -50,11 +53,15 @@ AEnemy::AEnemy() :
 	CombatRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CombatRange"));
 	CombatRangeSphere->SetupAttachment(GetRootComponent());
 
-	// Construct left and right weapon collision boxes
 	LeftWeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("Left Weapon Box"));
 	LeftWeaponCollision->SetupAttachment(GetMesh(), FName("LeftWeaponBone"));
 	RightWeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("Right Weapon Box"));
 	RightWeaponCollision->SetupAttachment(GetMesh(), FName("RightWeaponBone"));
+
+	bReplicates = true;
+	SetReplicateMovement(true);
+	SetReplicates(bReplicates);
+	
 }
 
 // Called when the game starts or when spawned
@@ -63,7 +70,7 @@ void AEnemy::BeginPlay()
 	Super::BeginPlay();
 
 	AgroSphere->OnComponentBeginOverlap.AddDynamic(
-		this, 
+		this,
 		&AEnemy::AgroSphereOverlap);
 	CombatRangeSphere->OnComponentBeginOverlap.AddDynamic(
 		this,
@@ -83,27 +90,26 @@ void AEnemy::BeginPlay()
 	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	LeftWeaponCollision->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	LeftWeaponCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	LeftWeaponCollision->SetCollisionResponseToChannel(
-		ECollisionChannel::ECC_Pawn, 
-		ECollisionResponse::ECR_Overlap);
+	LeftWeaponCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+
 	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	RightWeaponCollision->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	RightWeaponCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	RightWeaponCollision->SetCollisionResponseToChannel(
-		ECollisionChannel::ECC_Pawn,
-		ECollisionResponse::ECR_Overlap);
-	
+	RightWeaponCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+
+
+
+	Health = MaxHealth;
 	GetMesh()->SetCollisionResponseToChannel(
-		ECollisionChannel::ECC_Visibility, 
+		ECollisionChannel::ECC_Visibility,
 		ECollisionResponse::ECR_Block);
 	// Ignore the camera for Mesh and Capsule
 	GetMesh()->SetCollisionResponseToChannel(
-		ECollisionChannel::ECC_Camera, 
+		ECollisionChannel::ECC_Camera,
 		ECollisionResponse::ECR_Ignore);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(
 		ECollisionChannel::ECC_Camera,
-		ECollisionResponse::ECR_Ignore
-	);
+		ECollisionResponse::ECR_Ignore);
 
 	// Get the AI Controller
 	EnemyController = Cast<AEnemyController>(GetController());
@@ -115,19 +121,35 @@ void AEnemy::BeginPlay()
 			true);
 	}
 
+	// LocalSpace FVector to WorldSpace FVector
 	const FVector WorldPatrolPoint = UKismetMathLibrary::TransformLocation(
-		GetActorTransform(), 
+		GetActorTransform(),
 		PatrolPoint);
 	const FVector WorldPatrolPoint2 = UKismetMathLibrary::TransformLocation(
 		GetActorTransform(),
 		PatrolPoint2);
 
+	DrawDebugSphere(
+		GetWorld(),
+		WorldPatrolPoint,
+		25.f,
+		12,
+		FColor::Red,
+		true);
+
+	DrawDebugSphere(
+		GetWorld(),
+		WorldPatrolPoint2,
+		25.f,
+		12,
+		FColor::Red,
+		true);
+
 	if (EnemyController)
 	{
 		EnemyController->GetBlackboardComponent()->SetValueAsVector(
-				TEXT("PatrolPoint"), 
-				WorldPatrolPoint);
-
+			TEXT("PatrolPoint"),
+			WorldPatrolPoint);
 		EnemyController->GetBlackboardComponent()->SetValueAsVector(
 			TEXT("PatrolPoint2"),
 			WorldPatrolPoint2);
@@ -135,16 +157,18 @@ void AEnemy::BeginPlay()
 		EnemyController->RunBehaviorTree(BehaviorTree);
 	}
 
-	SetReplicateMovement(true);
+	bReplicates = true;
+	SetReplicateMovement(bReplicates);
+	SetReplicates(bReplicates);
 }
 
 void AEnemy::ShowHealthBar_Implementation()
 {
 	GetWorldTimerManager().ClearTimer(HealthBarTimer);
 	GetWorldTimerManager().SetTimer(
-		HealthBarTimer, 
-		this, 
-		&AEnemy::HideHealthBar, 
+		HealthBarTimer,
+		this,
+		&AEnemy::HideHealthBar,
 		HealthBarDisplayTime);
 }
 
@@ -160,16 +184,42 @@ void AEnemy::Die()
 	{
 		AnimInstance->Montage_Play(DeathMontage);
 	}
-
 	if (EnemyController)
 	{
 		EnemyController->GetBlackboardComponent()->SetValueAsBool(
 			FName("Dead"),
-			true
-		);
+			true);
 		EnemyController->StopMovement();
 	}
+	//ReqDie();
 }
+//
+//void AEnemy::ReqDie_Implementation()
+//{
+//	ResDie();
+//}
+//
+//void AEnemy::ResDie_Implementation()
+//{
+//	if (bDying) return;
+//	bDying = true;
+//
+//	HideHealthBar();
+//
+//	AnimInstance = GetMesh()->GetAnimInstance();
+//	if (AnimInstance && DeathMontage)
+//	{
+//		AnimInstance->Montage_Play(DeathMontage);
+//	}
+//	if (EnemyController)
+//	{
+//		EnemyController->GetBlackboardComponent()->SetValueAsBool(
+//			FName("Dead"),
+//			true);
+//		EnemyController->StopMovement();
+//	}
+//}
+
 
 void AEnemy::PlayHitMontage(FName Section, float PlayRate)
 {
@@ -180,16 +230,16 @@ void AEnemy::PlayHitMontage(FName Section, float PlayRate)
 		{
 			AnimInstance->Montage_Play(HitMontage, PlayRate);
 			AnimInstance->Montage_JumpToSection(Section, HitMontage);
+			bCanHitReact = false;
+			const float HitReactTime{ FMath::FRandRange(HitReactTimeMin, HitReactTimeMax) };
+			GetWorldTimerManager().SetTimer(
+				HitReactTimer,
+				this,
+				&AEnemy::ResetHitReactTimer,
+				HitReactTime);
 		}
-
-		bCanHitReact = false;
-		const float HitReactTime{ FMath::FRandRange(HitReactTimeMin, HitReactTimeMax) };
-		GetWorldTimerManager().SetTimer(
-			HitReactTimer, 
-			this, 
-			&AEnemy::ResetHitReactTimer, 
-			HitReactTime);
 	}
+
 }
 
 void AEnemy::ResetHitReactTimer()
@@ -205,9 +255,9 @@ void AEnemy::StoreHitNumber(UUserWidget* HitNumber, FVector Location)
 	FTimerDelegate HitNumberDelegate;
 	HitNumberDelegate.BindUFunction(this, FName("DestroyHitNumber"), HitNumber);
 	GetWorld()->GetTimerManager().SetTimer(
-		HitNumberTimer, 
-		HitNumberDelegate, 
-		HitNumberDestroyTime, 
+		HitNumberTimer,
+		HitNumberDelegate,
+		HitNumberDestroyTime,
 		false);
 }
 
@@ -225,8 +275,8 @@ void AEnemy::UpdateHitNumbers()
 		const FVector Location{ HitPair.Value };
 		FVector2D ScreenPosition;
 		UGameplayStatics::ProjectWorldToScreen(
-			GetWorld()->GetFirstPlayerController(), 
-			Location, 
+			GetWorld()->GetFirstPlayerController(),
+			Location,
 			ScreenPosition);
 		HitNumber->SetPositionInViewport(ScreenPosition);
 	}
@@ -243,6 +293,7 @@ void AEnemy::AgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor*
 		{
 			if (EnemyController->GetBlackboardComponent())
 			{
+				// Set the value of the Target Blackboard Key
 				EnemyController->GetBlackboardComponent()->SetValueAsObject(
 					TEXT("Target"),
 					Character);
@@ -258,7 +309,7 @@ void AEnemy::SetStunned(bool Stunned)
 	if (EnemyController)
 	{
 		EnemyController->GetBlackboardComponent()->SetValueAsBool(
-			TEXT("Stunned"), 
+			TEXT("Stunned"),
 			Stunned);
 	}
 }
@@ -274,8 +325,7 @@ void AEnemy::CombatRangeOverlap(UPrimitiveComponent* OverlappedComponent, AActor
 		{
 			EnemyController->GetBlackboardComponent()->SetValueAsBool(
 				TEXT("InAttackRange"),
-				true
-			);
+				true);
 		}
 	}
 }
@@ -291,19 +341,45 @@ void AEnemy::CombatRangeEndOverlap(UPrimitiveComponent* OverlappedComponent, AAc
 		{
 			EnemyController->GetBlackboardComponent()->SetValueAsBool(
 				TEXT("InAttackRange"),
-				false
-			);
+				false);
 		}
 	}
-
 }
 
 void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 {
+	//AnimInstance = GetMesh()->GetAnimInstance();
+	//if (AnimInstance && AttackMontage)
+	//{
+	//	AnimInstance->Montage_Play(AttackMontage, PlayRate);
+	//	AnimInstance->Montage_JumpToSection(Section, AttackMontage);
+	//}
+	//bCanAttack = false;
+	//GetWorldTimerManager().SetTimer(
+	//	AttackWaitTimer,
+	//	this,
+	//	&AEnemy::ResetCanAttack,
+	//	AttackWaitTime);
+	//if (EnemyController)
+	//{
+	//	EnemyController->GetBlackboardComponent()->SetValueAsBool(
+	//		FName("CanAttack"),
+	//		false);
+	//}
+	ReqPlayAttackMontage(Section, PlayRate);
+}
+
+void AEnemy::ReqPlayAttackMontage_Implementation(FName Section, float PlayRate)
+{
+	ResPlayAttackMontage(Section, PlayRate);
+}
+
+void AEnemy::ResPlayAttackMontage_Implementation(FName Section, float PlayRate)
+{
 	AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && AttackMontage)
 	{
-		AnimInstance->Montage_Play(AttackMontage);
+		AnimInstance->Montage_Play(AttackMontage, PlayRate);
 		AnimInstance->Montage_JumpToSection(Section, AttackMontage);
 	}
 	bCanAttack = false;
@@ -311,8 +387,7 @@ void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 		AttackWaitTimer,
 		this,
 		&AEnemy::ResetCanAttack,
-		AttackWaitTime
-	);
+		AttackWaitTime);
 	if (EnemyController)
 	{
 		EnemyController->GetBlackboardComponent()->SetValueAsBool(
@@ -324,7 +399,7 @@ void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 FName AEnemy::GetAttackSectionName()
 {
 	FName SectionName;
-	const int32 Section{ FMath::RandRange(1, 4) };
+	const int32 Section{ FMath::RandRange(1,4) };
 	switch (Section)
 	{
 	case 1:
@@ -343,6 +418,7 @@ FName AEnemy::GetAttackSectionName()
 	return SectionName;
 }
 
+
 void AEnemy::DoDamage(AShooterCharacter* Victim)
 {
 	if (Victim == nullptr) return;
@@ -352,9 +428,7 @@ void AEnemy::DoDamage(AShooterCharacter* Victim)
 		BaseDamage,
 		EnemyController,
 		this,
-		UDamageType::StaticClass()
-	);
-
+		UDamageType::StaticClass());
 	if (Victim->GetMeleeImpactSound())
 	{
 		UGameplayStatics::PlaySoundAtLocation(
@@ -375,8 +449,7 @@ void AEnemy::SpawnBlood(AShooterCharacter* Victim, FName SocketName)
 			UGameplayStatics::SpawnEmitterAtLocation(
 				GetWorld(),
 				Victim->GetBloodParticles(),
-				SocketTransform
-			);
+				SocketTransform);
 		}
 	}
 }
@@ -385,8 +458,8 @@ void AEnemy::StunCharacter(AShooterCharacter* Victim)
 {
 	if (Victim)
 	{
-		const float Stun{ FMath::FRandRange(0.f, 1.f) };
-		if (Stun <= Victim->GetStunChance())
+		const float Stun{ FMath::FRandRange(0.f,1.f) };
+		if (Stun < Victim->GetStunChance())
 		{
 			Victim->Stun();
 		}
@@ -412,8 +485,7 @@ void AEnemy::FinishDeath()
 		DeathTimer,
 		this,
 		&AEnemy::DestroyEnemy,
-		DeathTime
-	);
+		DeathTime);
 }
 
 void AEnemy::DestroyEnemy()
@@ -424,10 +496,11 @@ void AEnemy::DestroyEnemy()
 void AEnemy::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
 	DOREPLIFETIME(AEnemy, AnimInstance);
-	DOREPLIFETIME(AEnemy, EnemyHealth);
-	DOREPLIFETIME(AEnemy, EnemyMaxHealth);
 	DOREPLIFETIME(AEnemy, bDying);
+	DOREPLIFETIME(AEnemy, bCanHitReact);
+	DOREPLIFETIME(AEnemy, AttackMontage);
 }
 
 void AEnemy::BindEnemyHp()
@@ -437,15 +510,15 @@ void AEnemy::BindEnemyHp()
 
 void AEnemy::UpdateEnemyHp(float CurHp, float MaxHp)
 {
-	EnemyHealth = CurHp;
-	EnemyMaxHealth = MaxHp;
+	Health = CurHp;
+	MaxHealth = MaxHp;
 }
 
 void AEnemy::OnRep_EnemyHealth()
 {
 	if (UpdateHpDelegate.IsBound())
 	{
-		UpdateHpDelegate.Broadcast(EnemyHealth, EnemyMaxHealth);
+		UpdateHpDelegate.Broadcast(Health, MaxHealth);
 	}
 }
 
@@ -453,11 +526,6 @@ void AEnemy::OnRep_EnemyMaxHealth()
 {
 }
 
-void AEnemy::UpdateHP(float CurHp, float MaxHP)
-{
-	EnemyHealth = CurHp;
-	EnemyMaxHealth = MaxHP;
-}
 
 void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -522,31 +590,34 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, ACo
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
 	}
-	if (ImpactParticles)
+	if (ImpactParticle)
 	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, HitResult.Location, FRotator(0.f), true);
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticle, HitResult.Location, FRotator(0.f), true);
 	}
+	
 }
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	// Set the Target Blackboard Key to agro the Character
+
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	if (EnemyController)
 	{
 		EnemyController->GetBlackboardComponent()->SetValueAsObject(
 			FName("Target"),
 			DamageCauser);
 	}
-	
-	if (EnemyHealth - DamageAmount <= 0.f)
+
+	if (Health - DamageAmount <= 0.f)
 	{
-		EnemyHealth = 0.f;
+		Health = 0.f;
 		Die();
 	}
 	else
 	{
-		EnemyHealth -= DamageAmount;
+		Health -= DamageAmount;
 	}
+
 
 	if (bDying) return DamageAmount;
 
@@ -554,14 +625,19 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 
 	// Determine whether bullet hit stuns
 	const float Stunned = FMath::FRandRange(0.f, 1.f);
-	if (Stunned <= StunChance)
+	const AShooterCharacter* Player = Cast<AShooterCharacter>(DamageCauser);
+	float FinalStunRate;
+	if (Player)
+	{
+		FinalStunRate = Player->GetEquippedWeapon()->GetRarityFactor() - StunResist;
+	}
+	if (Stunned < FinalStunRate)
 	{
 		// Stun the Enemy
 		PlayHitMontage(FName("HitReactFront"));
 		SetStunned(true);
 	}
 
-	OnRep_EnemyHealth();
-
 	return DamageAmount;
 }
+

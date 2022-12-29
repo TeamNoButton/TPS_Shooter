@@ -8,7 +8,6 @@
 #include "ShooterCharacter.generated.h"
 
 
-
 UENUM(BlueprintType)
 enum class ECombatState : uint8
 {
@@ -17,8 +16,10 @@ enum class ECombatState : uint8
 	ECS_Reloading UMETA(DisplayName = "Reloading"),
 	ECS_Equipping UMETA(DisplayName = "Equipping"),
 	ECS_Stunned UMETA(DisplayName = "Stunned"),
+	ECS_Dying UMETA(DisplayName = "Dying"),
 
-	ECS_NAX UMETA(DisplayName = "DefaultMAX")
+
+	ECS_MAX UMETA(DisplayName = "DefaultMAX")
 };
 
 USTRUCT(BlueprintType)
@@ -29,7 +30,7 @@ struct FInterpLocation
 	// Scene component to use for its location for interping
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USceneComponent* SceneComponent;
-
+	
 	// Number of items interping to/at this scene comp location
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	int32 ItemCount;
@@ -38,8 +39,6 @@ struct FInterpLocation
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEquipItemDelegate, int32, CurrentSlotIndex, int32, NewSlotIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, int32, SlotIndex, bool, bStartAnimation);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FUpdateHpDelegate, float, float);
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, float, SlotIndex, float, bStartAnimation);
-
 UCLASS()
 class SHOOTER_API AShooterCharacter : public ACharacter
 {
@@ -80,13 +79,13 @@ protected:
 
 	/**
 	* Rotate controller based on mouse X movement
-	* @param Value   The input value from mouse movement
+	* @param Value  The input value from mouse movement
 	*/
 	void Turn(float Value);
 
 	/**
 	* Rotate controller based on mouse Y movement
-	* @param Value   The input value from mouse movement
+	* @param Value  The input value from mouse movement
 	*/
 	void LookUp(float Value);
 
@@ -114,8 +113,13 @@ protected:
 	UFUNCTION()
 	void AutoFireReset();
 
+	void StartCrosshairBulletFire();
+
+	UFUNCTION()
+	void FinishCrosshairBulletFire();
+
 	/** Line trace for items under the crosshairs */
-	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation);
+	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation, float TraceLength);
 
 	/** Trace for items if OverlappedItemCount > 0 */
 	void TraceForItems();
@@ -123,24 +127,32 @@ protected:
 	/** Spawns a default weapon and equips it */
 	class AWeapon* SpawnDefaultWeapon();
 
+	UFUNCTION(NetMulticast, Reliable)
+		void ResSpawnDefaultWeapon();
+	void ResSpawnDefaultWeapon_Implementation();
+
+
+
 	/** Takes a weapon and attaches it to the mesh */
 	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
 
-
 	UFUNCTION(Server, Reliable)
 	void ReqPressSelect(AItem* Item);
+	void ReqPressSelect_Implementation(AItem* Item);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void ResPressSelect(AItem* Item);
+		void ResPressSelect(AItem* Item);
+	void ResPressSelect_Implementation(AItem* Item);
+
 
 	/** Detach weapon and let it fall to the ground */
-	void DropWeapon();
+	void DropWeapon(int32 SelectedIndex, bool bSwapping);
 
 	void SelectButtonPressed();
 	void SelectButtonReleased();
 
 	/** Drops currently equipped Weapon and Equips TraceHitItem */
-	void SwapWeapon(AWeapon* WeaponToSwap);
+	void SwapWeapon(AWeapon* WeaponToSwap, int32 SelectedIndex);
 
 	/** Initialize the Ammo Map with ammo values */
 	void InitializeAmmoMap();
@@ -150,14 +162,35 @@ protected:
 
 	/** FireWeapon functions */
 	void PlayFireSound();
-	void SendBullet();
-	void PlayGunfireMontage();
 
-	/** Bound to the R key and Gamepad Face Button Left */
+	void SendBullet();
+
+	UFUNCTION(Server, Reliable)
+		void ReqSendBullet(const FTransform SocketTransform, const FHitResult BeamHitResult);
+	void ReqSendBullet_Implementation(const FTransform SocketTransform, const FHitResult BeamHitResult);
+	UFUNCTION(NetMulticast, Reliable)
+		void ResSendBullet(const FTransform SocketTransform, const FHitResult BeamHitResult);
+	void ResSendBullet_Implementation(const FTransform SocketTransform, const FHitResult BeamHitResult);
+
+	void PlayGunFireMontage();
+
+	/** Bound to the R key */
 	void ReloadButtonPressed();
 
 	/** Handle reloading of the weapon */
 	void ReloadWeapon();
+
+
+	UFUNCTION(Server, Reliable)
+	void ReqReloadWeapon();
+	void ReqReloadWeapon_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void ResReloadWeapon();
+	void ResReloadWeapon_Implementation();
+
+
+
 
 	/** Checks to see if we have ammo of the EquippedWeapon's ammo type */
 	bool CarryingAmmo();
@@ -175,7 +208,18 @@ protected:
 	virtual void Jump() override;
 
 	/** Interps capsule half height when crouching/standing */
-	void InterpCapsuleHalfHeight(float DeltaTime);
+	//UFUNCTION(NetMulticast, Reliable)
+	void InterpCapsuleHalfHeight();
+	//void InterpCapsuleHalfHeight_Implementation();
+
+
+	UFUNCTION(Server, Reliable)
+		void ReqInterpCapsuleHalfHeight(  );
+	void ReqInterpCapsuleHalfHeight_Implementation(  );
+
+	UFUNCTION(NetMulticast, Reliable)
+		void ResInterpCapsuleHalfHeight(  );
+	void ResInterpCapsuleHalfHeight_Implementation();
 
 	void Aim();
 	void StopAiming();
@@ -190,10 +234,23 @@ protected:
 	void ThreeKeyPressed();
 	void FourKeyPressed();
 	void FiveKeyPressed();
+	void DropKeyPressed();
 
 	void ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
 
-	int32 GetEmptyInventorySlot();
+
+	UFUNCTION(Server, Reliable)
+	void ReqExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
+	void ReqExchangeInventoryItems_Implementation(int32 CurrentItemIndex, int32 NewItemIndex);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void ResExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
+	void ResExchangeInventoryItems_Implementation(int32 CurrentItemIndex, int32 NewItemIndex);
+
+
+
+	int32 GetChangableInventorySlot(bool& OutHasEmptySlot);
+
 
 	void HighlightInventorySlot();
 
@@ -205,25 +262,65 @@ protected:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Die();
+	void Die_Implementation();
 
 	UFUNCTION(BlueprintCallable)
 	void FinishDeath();
 
-	void StartCrosshairBulletFire();
 
-	UFUNCTION()
-	void FinishCrosshairBulletFire();
-
-	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
+	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 
 	virtual void SetReplicateMovement(bool bInReplicateMovement) override;
-
-	
 
 	void UpdateHP(float CurHp, float MaxHP);
 
 	void BindPlayerHP();
+
+	UFUNCTION(Server, Reliable)
+	void ReqBulletHit(FHitResult BeamHit);
+	void ReqBulletHit_Implementation(FHitResult BeamHit);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void ResBulletHit(FHitResult BeamHit);
+	void ResBulletHit_Implementation( FHitResult BeamHit);
+
+	UFUNCTION(Server, Reliable)
+		void SetFiringBullet(bool state);
+	void SetFiringBullet_Implementation(bool state);
+
+	UFUNCTION(NetMulticast, Reliable)
+		void ResSetFiringBullet(bool state);
+	void ResSetFiringBullet_Implementation(bool state);
+
+	//UFUNCTION(Server, Reliable)
+		void SetCrouching(bool state);
+	//void SetCrouching_Implementation(bool state);
+
+	//UFUNCTION(NetMulticast, Reliable)
+	//	void ResSetCrouching(bool state);
+	//void ResSetCrouching_Implementation(bool state);
+
+	UFUNCTION(Server, Reliable)
+		void SetCrouchingPressed( );
+	void SetCrouchingPressed_Implementation( );
+
+	UFUNCTION(NetMulticast, Reliable)
+		void ResSetCrouchingPressed( );
+	void ResSetCrouchingPressed_Implementation( );
+
+
+	UFUNCTION(Server, Reliable)
+		void SetAiming(bool state);
+	void SetAiming_Implementation(bool state);
+
+	UFUNCTION(NetMulticast, Reliable)
+		void ResSetAiming(bool state);
+	void ResSetAiming_Implementation(bool state);
+
+
 	
+
+
 
 public:
 	// Called every frame
@@ -233,6 +330,15 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
+	// 변수 선언 섹션
+	// 변수선언과 변수의 Getter와 Setter를 세팅해 주는 방식
+	// private으로 먼저 변수를 전방선언 해주고,
+	// public으로 Getter/Setter를 그 아래에 선언해 주면,
+	// 변수가 이미 선언되어 있기 때문에 추가 전방선언이 필요없다 !!!
+
+	// VisibleAnywhere : 변수의 정보가 블루프린트/인스턴스 디테일 패널에 모두 표시 하도록 설정.
+	// BlueprintReadOnly : 블루프린트에서 해당 변수가 Getter Node 는 가지고 있지만 Setter Node는 가지고 있지 않게 설정.
+	// meta = (AllowPrivateAccess = "true") : private 변수를 블루프린트에서 엑세스 할 수 있도록 설정.
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
@@ -241,82 +347,74 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
 
-
-	
-
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float BaseTurnRate;
 
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final turn rate */
-	UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere,  BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float BaseLookUpRate;
 
 	/** Turn rate while not aiming */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float HipTurnRate;
 
-	/** Look up rate when not aiming */
-	UPROPERTY(EditDefaultsOnly,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	/** Look up rate while not aiming */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float HipLookUpRate;
 
-	/** Turn rate when aiming */
+	/** Turn rate while aiming */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float AimingTurnRate;
 
-	/** Look up rate when aiming */
-	UPROPERTY(EditDefaultsOnly,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	/** Look up rate while aiming */
+	UPROPERTY(EditDefaultsOnly,  BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float AimingLookUpRate;
-
+	
 	/** Scale factor for mouse look sensitivity. Turn rate when not aiming. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float MouseHipTurnRate;
-
+	
 	/** Scale factor for mouse look sensitivity. Look up rate when not aiming. */
-	UPROPERTY(EditDefaultsOnly,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float MouseHipLookUpRate;
-
+	
 	/** Scale factor for mouse look sensitivity. Turn rate when aiming. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float MouseAimingTurnRate;
 
 	/** Scale factor for mouse look sensitivity. Look up rate when aiming. */
-	UPROPERTY(EditDefaultsOnly,Replicated, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"), meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float MouseAimingLookUpRate;
-
-	/** Particles spawned upon bullet impact */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* ImpactParticles;
-
-	/** Smoke trail for bullets */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* BeamParticles;
-
-
-	
 
 	/** Montage for firing the weapon */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UAnimMontage* HipFireMontage;
 
+	/** Particles spawned upon bullet impact */
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* ImpactParticles;
 
+	/** Smoke trail for bullets */
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* BeamParticles;
 
 	/** True when aiming */
 	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
 	/** Default camera field of view value */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float CameraDefaultFOV;
 
 	/** Field of view value for when zoomed in */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	float CameraZoomedFOV;
 
 	/** Current field of view this frame */
 	float CameraCurrentFOV;
 
-	/** Interp speed for zooming when aiming */
+	/** Interpolate speed for zooming when aiming*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float ZoomInterpSpeed;
 
@@ -331,16 +429,22 @@ private:
 	/** In air component for crosshairs spread */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Crosshairs, meta = (AllowPrivateAccess = "true"))
 	float CrosshairInAirFactor;
-
+	
 	/** Aim component for crosshairs spread */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Crosshairs, meta = (AllowPrivateAccess = "true"))
 	float CrosshairAimFactor;
-
+	
 	/** Shooting component for crosshairs spread */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Crosshairs, meta = (AllowPrivateAccess = "true"))
 	float CrosshairShootingFactor;
 
-	/** Left mouse button or right console trigger pressed */
+	float ShootTimeDuration;
+
+	UPROPERTY(Replicated)
+	bool bFiringBullet;
+	FTimerHandle CrosshairShootTimer;
+
+	/** Left mouse button pressed */
 	bool bFireButtonPressed;
 
 	/** True when we can fire. False when waiting for the timer */
@@ -356,35 +460,27 @@ private:
 	int8 OverlappedItemCount;
 
 	/** The AItem we hit last frame */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
 	class AItem* TraceHitItemLastFrame;
 
 	/** Currently equipped Weapon */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	AWeapon* EquippedWeapon;
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class AWeapon* EquippedWeapon;
 
 	/** Set this in Blueprints for the default Weapon class */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
 
-	/** The item currently hit by our trace in TraceForItems (could be null) */
+	/** The item currently hit by our trace in TraceForItem (could be null) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	AItem* TraceHitItem;
 
-	/** Distance outward from the camera for the interp destination */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
-	float CameraInterpDistance;
-
-	/** Distance upward from the camera for the interp destination */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
-	float CameraInterpElevation;
-
 	/** Map to keep track of ammo of the different ammo types */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
 	TMap<EAmmoType, int32> AmmoMap;
 
 	/** Starting amount of 9mm ammo */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Items, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = Items, meta = (AllowPrivateAccess = "true"))
 	int32 Starting9mmAmmo;
 
 	/** Starting amount of AR ammo */
@@ -392,11 +488,11 @@ private:
 	int32 StartingARAmmo;
 
 	/** Combat State, can only fire or reload if Unoccupied */
-	UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	ECombatState CombatState;
 
 	/** Montage for reload animations */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* ReloadMontage;
 
 	/** Montage for reload animations */
@@ -405,6 +501,17 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
+
+
+	UFUNCTION(Server, Reliable)
+		void ReqFinishReloading();
+	void ReqFinishReloading_Implementation();
+
+	UFUNCTION(NetMulticast, Reliable)
+		void ResFinishReloading();
+	void ResFinishReloading_Implementation();
+
+
 
 	UFUNCTION(BlueprintCallable)
 	void FinishEquipping();
@@ -418,35 +525,44 @@ private:
 	USceneComponent* HandSceneComponent;
 
 	/** True when crouching */
-	UPROPERTY(VisibleAnywhere,Replicated, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bCrouching;
 
 	/** Regular movement speed */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	float BaseMovementSpeed;
-
+	
 	/** Crouch movement speed */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	float CrouchMovementSpeed;
 
 	/** Current half height of the capsule */
+	UPROPERTY(Replicated)
 	float CurrentCapsuleHalfHeight;
 
 	/** Half height of the capsule when not crouching */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category=Movement, meta = (AllowPrivateAccess = "true"))
 	float StandingCapsuleHalfHeight;
 
 	/** Half height of the capsule when crouching */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated)
 	float CrouchingCapsuleHalfHeight;
 
 	/** Ground friction while not crouching */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	float BaseGroundFriction;
-	
+
 	/** Ground friction while crouching */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	float CrouchingGroundFriction;
+
+	/** Braking Deceleration Walking while not crouching */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	float BaseBrakingDecelerationWalking;
+	
+	/** Braking Deceleration Walking while crouching */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	float CrouchingBrakingDecelerationWalking;
 
 	/** Used for knowing when the aiming button is pressed */
 	bool bAimingButtonPressed;
@@ -473,7 +589,7 @@ private:
 	USceneComponent* InterpComp6;
 
 	/** Array of interp location structs */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<FInterpLocation> InterpLocations;
 
 	FTimerHandle PickupSoundTimer;
@@ -494,10 +610,11 @@ private:
 	float EquipSoundResetTime;
 
 	/** An array of AItems for our Inventory */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,  BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
 	TArray<AItem*> Inventory;
 
-	const int32 INVENTORY_CAPACITY{ 6 };
+	
+	const int32 INVENTORY_CAPACITY{ 3 };
 
 	/** Delegate for sending slot information to InventoryBar when equipping */
 	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"))
@@ -507,7 +624,6 @@ private:
 	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"))
 	FHighlightIconDelegate HighlightIconDelegate;
 
-	/** Delegate for sending player health information */
 	FUpdateHpDelegate UpdateHpDelegate;
 
 	/** The index for the currently highlighted slot */
@@ -542,31 +658,22 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* DeathMontage;
 
-	/** true when Character dies */
-	UPROPERTY(VisibleAnywhere, Replicated,BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	bool bDead;
 
-	float ShootTimeDuration;
-
-	float ReloadTimeDuraton;
-
-	float EquippingTimeDuration;
-
-	UPROPERTY(Replicated)
-	bool bFiringBullet;
-	FTimerHandle CrosshairShootTimer;
-
-	TArray<FGuid> ItemGuids;
-
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Replicate, meta = (AllowPrivateAccess = "true"))
+	bool bReplicateShooterMovement;
 
 	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	UAnimInstance* AnimInstance;
 
 
-	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Replicate, meta = (AllowPrivateAccess = "true"))
-	bool bReplicateShooterMovement;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
+	FRotator Pitch;
+
+	const int32 DefaultSlotIndex = INVENTORY_CAPACITY - 1;
 
 public:
+	UPROPERTY()
+		float LookUpScaleFactor;
 	/** Returns CameraBoom subobject */
 	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject */
@@ -580,15 +687,11 @@ public:
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
 
 	/** Adds/subtracts to/from OverlappedItemCount and updates bShouldTraceForItems */
-	void IncrementOverlappedItemCount(int8 Amount, FGuid ID);
-
-	// No longer needed; AItem has GetInterpLocation
-	//FVector GetCameraInterpLocation();
+	void IncrementOverlappedItemCount(int8 Amount);
 
 	void GetPickupItem(AItem* Item);
 
 	FORCEINLINE ECombatState GetCombatState() const { return CombatState; }
-	FORCEINLINE void SetCombatState(ECombatState state) {  CombatState = state; }
 	FORCEINLINE bool GetCrouching() const { return bCrouching; }
 	FInterpLocation GetInterpLocation(int32 Index);
 
@@ -608,17 +711,13 @@ public:
 	FORCEINLINE AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
 	FORCEINLINE USoundCue* GetMeleeImpactSound() const { return MeleeImpactSound; }
 	FORCEINLINE UParticleSystem* GetBloodParticles() const { return BloodParticles; }
-
+	
 	void Stun();
 	FORCEINLINE float GetStunChance() const { return StunChance; }
 
-	FORCEINLINE bool GetShooterReplicateMovement() const { return bReplicates; }
-	FORCEINLINE void SetShooterReplicateMovement(bool state) { bReplicates = state; }
-	FORCEINLINE bool GetFiringBullet() const { return bFiringBullet; }
-	FORCEINLINE void SetFiringBullet(bool state) {  bFiringBullet = state; }
-	FORCEINLINE float GetShootTimeDuration() { return ShootTimeDuration; }
-	FORCEINLINE float GetReloadTimeDuration() { return ReloadTimeDuraton; }
-	FORCEINLINE float GetEquippingTimeDuration() const { return EquippingTimeDuration; }
+	FORCEINLINE int32 GetDefaultSlotIndex() const { return DefaultSlotIndex; }
+	
+
 
 	UFUNCTION()
 		void OnRep_Health();
@@ -626,3 +725,6 @@ public:
 	UFUNCTION()
 		void OnRep_MaxHealth();
 };
+
+
+

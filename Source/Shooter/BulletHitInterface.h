@@ -23,6 +23,7 @@ class SHOOTER_API IBulletHitInterface
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
 
+	// BlueprintNativeEvent : have some C++ Code && some implementation in BP
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void BulletHit(FHitResult HitResult, AActor* Shooter, AController* ShooterController);
 };

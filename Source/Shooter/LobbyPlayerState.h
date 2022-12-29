@@ -7,16 +7,16 @@
 #include "LobbyPlayerState.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class SHOOTER_API ALobbyPlayerState : public APlayerState
 {
 	GENERATED_BODY()
-	
+
 public:
 
-	FORCEINLINE void SetPlayerName(FString Name) { UserName = Name; }
+	FORCEINLINE void SetUserName(FString Name) { UserName = Name; }
 
 
 private:

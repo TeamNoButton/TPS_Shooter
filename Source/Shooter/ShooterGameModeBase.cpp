@@ -7,9 +7,9 @@
 
 AShooterGameModeBase::AShooterGameModeBase()
 {
-	APlayerController * PC = Cast<APlayerController>(UGameplayStatics::GetPlayerController(GetWorld(),0));
-	
-	
+	APlayerController* PC = Cast<APlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+
+
 	if (PC)
 	{
 		PC->bShowMouseCursor = false;

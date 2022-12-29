@@ -6,7 +6,6 @@
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "Enemy.h"
-
 AEnemyController::AEnemyController()
 {
 	BlackboardComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
@@ -15,6 +14,8 @@ AEnemyController::AEnemyController()
 	BehaviorTreeComponent = CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
 	check(BehaviorTreeComponent);
 }
+
+
 
 void AEnemyController::OnPossess(APawn* InPawn)
 {
@@ -30,3 +31,4 @@ void AEnemyController::OnPossess(APawn* InPawn)
 		}
 	}
 }
+

@@ -10,7 +10,7 @@ struct FUserScore
 	GENERATED_BODY()
 
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		int32 UserKill;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		int32 UserDeath;
@@ -30,20 +30,20 @@ class SHOOTER_API UShooterGameInstance : public UGameInstance
 public:
 
 	UFUNCTION(BlueprintCallable)
-	void SetPlayerName(FString Name);
+		void SetPlayerName(FString Name);
 
 private:
 
 
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = GameInstance, meta = (AllowPrivateAccess = "true"))
-	FString PlayerName;
+		FString PlayerName;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = GameInstance, meta = (AllowPrivateAccess = "true"))
-	FUserScore UserKillDeath;
+		FUserScore UserKillDeath;
 
 public:
 
-	FORCEINLINE FString GetPlayerName() { return PlayerName;  }
-	
+	FORCEINLINE FString GetPlayerName() { return PlayerName; }
+
 };

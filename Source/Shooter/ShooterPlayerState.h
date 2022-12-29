@@ -7,7 +7,7 @@
 #include "ShooterPlayerState.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class SHOOTER_API AShooterPlayerState : public APlayerState
@@ -16,7 +16,7 @@ class SHOOTER_API AShooterPlayerState : public APlayerState
 
 public:
 	FORCEINLINE void SetPlayerName(FString Name) { UserName = Name; }
-	
+
 private:
 	FString UserName;
 };
