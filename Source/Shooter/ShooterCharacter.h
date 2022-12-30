@@ -119,7 +119,7 @@ protected:
 	void FinishCrosshairBulletFire();
 
 	/** Line trace for items under the crosshairs */
-	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation, float TraceLength);
+	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation, float TraceLength, bool bShooting);
 
 	/** Trace for items if OverlappedItemCount > 0 */
 	void TraceForItems();
@@ -127,28 +127,21 @@ protected:
 	/** Spawns a default weapon and equips it */
 	class AWeapon* SpawnDefaultWeapon();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void ResSpawnDefaultWeapon();
+	void ResSpawnDefaultWeapon_Implementation();
+
+
 
 	/** Takes a weapon and attaches it to the mesh */
 	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
-
-
-	UFUNCTION(Server, Reliable)
-		void ReqEquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
-	void ReqEquipWeapon_Implementation(AWeapon* WeaponToEquip, bool bSwapping = false);
-
-	UFUNCTION(NetMulticast, Reliable)
-		void ResEquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
-	void ResEquipWeapon_Implementation(AWeapon* WeaponToEquip, bool bSwapping = false);
-
-
-
 
 	UFUNCTION(Server, Reliable)
 	void ReqPressSelect(AItem* Item);
 	void ReqPressSelect_Implementation(AItem* Item);
 
 	UFUNCTION(NetMulticast, Reliable)
-		void ResPressSelect(AItem* Item);
+	void ResPressSelect(AItem* Item);
 	void ResPressSelect_Implementation(AItem* Item);
 
 
@@ -173,10 +166,10 @@ protected:
 	void SendBullet();
 
 	UFUNCTION(Server, Reliable)
-		void ReqSendBullet(const FTransform SocketTransform, const FHitResult BeamHitResult);
+	void ReqSendBullet(const FTransform SocketTransform, const FHitResult BeamHitResult);
 	void ReqSendBullet_Implementation(const FTransform SocketTransform, const FHitResult BeamHitResult);
 	UFUNCTION(NetMulticast, Reliable)
-		void ResSendBullet(const FTransform SocketTransform, const FHitResult BeamHitResult);
+	void ResSendBullet(const FTransform SocketTransform, const FHitResult BeamHitResult);
 	void ResSendBullet_Implementation(const FTransform SocketTransform, const FHitResult BeamHitResult);
 
 	void PlayGunFireMontage();
@@ -221,11 +214,11 @@ protected:
 
 
 	UFUNCTION(Server, Reliable)
-		void ReqInterpCapsuleHalfHeight(  );
+	void ReqInterpCapsuleHalfHeight(  );
 	void ReqInterpCapsuleHalfHeight_Implementation(  );
 
 	UFUNCTION(NetMulticast, Reliable)
-		void ResInterpCapsuleHalfHeight(  );
+	void ResInterpCapsuleHalfHeight(  );
 	void ResInterpCapsuleHalfHeight_Implementation();
 
 	void Aim();
@@ -235,12 +228,10 @@ protected:
 
 	void InitializeInterpLocations();
 
-	void FKeyPressed();
 	void OneKeyPressed();
 	void TwoKeyPressed();
 	void ThreeKeyPressed();
-	void FourKeyPressed();
-	void FiveKeyPressed();
+
 	void DropKeyPressed();
 
 	void ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
@@ -291,18 +282,16 @@ protected:
 	void ResBulletHit(FHitResult BeamHit);
 	void ResBulletHit_Implementation( FHitResult BeamHit);
 
-
-
 	UFUNCTION(Server, Reliable)
-		void SetFiringBullet(bool state);
+	void SetFiringBullet(bool state);
 	void SetFiringBullet_Implementation(bool state);
 
 	UFUNCTION(NetMulticast, Reliable)
-		void ResSetFiringBullet(bool state);
+	void ResSetFiringBullet(bool state);
 	void ResSetFiringBullet_Implementation(bool state);
 
 	//UFUNCTION(Server, Reliable)
-		void SetCrouching(bool state);
+	void SetCrouching(bool state);
 	//void SetCrouching_Implementation(bool state);
 
 	//UFUNCTION(NetMulticast, Reliable)
@@ -310,21 +299,23 @@ protected:
 	//void ResSetCrouching_Implementation(bool state);
 
 	UFUNCTION(Server, Reliable)
-		void SetCrouchingPressed( );
+	void SetCrouchingPressed( );
 	void SetCrouchingPressed_Implementation( );
 
 	UFUNCTION(NetMulticast, Reliable)
-		void ResSetCrouchingPressed( );
+	void ResSetCrouchingPressed( );
 	void ResSetCrouchingPressed_Implementation( );
 
 
 	UFUNCTION(Server, Reliable)
-		void SetAiming(bool state);
+	void SetAiming(bool state);
 	void SetAiming_Implementation(bool state);
 
 	UFUNCTION(NetMulticast, Reliable)
-		void ResSetAiming(bool state);
+	void ResSetAiming(bool state);
 	void ResSetAiming_Implementation(bool state);
+
+	void RecoilCameraShake();
 
 
 	
@@ -399,14 +390,6 @@ private:
 	/** Montage for firing the weapon */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UAnimMontage* HipFireMontage;
-
-	/** Particles spawned upon bullet impact */
-	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* ImpactParticles;
-
-	/** Smoke trail for bullets */
-	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* BeamParticles;
 
 	/** True when aiming */
 	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -619,12 +602,11 @@ private:
 	float EquipSoundResetTime;
 
 	/** An array of AItems for our Inventory */
-	UPROPERTY(VisibleAnywhere,   BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,  BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
 	TArray<AItem*> Inventory;
 
 	
-	UPROPERTY(Replicated, meta = (AllowPrivateAccess = "true"))
-	int32 INVENTORY_CAPACITY{ 3 };
+	const int32 INVENTORY_CAPACITY{ 3 };
 
 	/** Delegate for sending slot information to InventoryBar when equipping */
 	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"))
@@ -679,7 +661,16 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	FRotator Pitch;
 
-	int32 DefaultSlotIndex = INVENTORY_CAPACITY - 1;
+	const int32 DefaultSlotIndex = INVENTORY_CAPACITY - 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Crosshairs, meta = (AllowPrivateAccess = "true"))
+	float CrosshairSpreadMax;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Crosshairs, meta = (AllowPrivateAccess = "true"))
+	float CrosshairW;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Crosshairs, meta = (AllowPrivateAccess = "true"))
+	float CrosshairH;
 
 public:
 	UPROPERTY()
@@ -693,6 +684,15 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	float GetCrosshairSpreadMultiplier() const;
+
+	UFUNCTION(BlueprintCallable)
+	float GetCrosshairSpreadMax() const { return CrosshairSpreadMax; }
+
+	UFUNCTION(BlueprintCallable)
+	float GetCrosshairW() const { return CrosshairW; }
+
+	UFUNCTION(BlueprintCallable)
+	float GetCrosshairH() const { return CrosshairH; }
 
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
 
@@ -730,10 +730,10 @@ public:
 
 
 	UFUNCTION()
-		void OnRep_Health();
+	void OnRep_Health();
 
 	UFUNCTION()
-		void OnRep_MaxHealth();
+	void OnRep_MaxHealth();
 };
 
 

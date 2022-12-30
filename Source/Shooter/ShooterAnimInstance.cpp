@@ -22,13 +22,13 @@ UShooterAnimInstance::UShooterAnimInstance() :
 	Pitch(0.f),
 	bReloading(false),
 	OffsetState(EOffsetState::EOS_Hip),
-	CharacterRotationLastFrame(FRotator(0.f)),
 	CharacterRotation(FRotator(0.f)),
+	CharacterRotationLastFrame(FRotator(0.f)),
 	YawDelta(0.f),
 	bCrouching(false),
+	bEquipping(false),
 	RecoilWeight(1.0f),
 	bTurningInPlace(false),
-	bEquipping(false),
 	EquippedWeaponType(EWeaponType::EWT_MAX),
 	bShouldUseFABRIK(false)
 {

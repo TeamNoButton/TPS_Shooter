@@ -15,9 +15,9 @@ AWeapon::AWeapon() :
 	bMovingClip(false),
 	SlideDisplacement(0.f),
 	SlideDisplacementTime(0.1f),
+	SlideSpeed(0.3f),
 	bMovingSlide(false),
-	MaxSlideDisplacement(4.f),
-	SlideSpeed(1.f),
+	MaxSlideDisplacement(6.f),
 	MaxRecoilRotation(20.f),
 	bAutomatic(true)
 {
@@ -153,11 +153,18 @@ void AWeapon::SetWeaponData()
 			CrosshairsBottom = WeaponDataRow->CrosshairsBottom;
 			AutoFireRate = WeaponDataRow->AutoFireRate;
 			MuzzleFlash = WeaponDataRow->MuzzleFlash;
+			ImpactParticles = WeaponDataRow->ImpactParticles;
+			BeamParticles = WeaponDataRow->BeamParticles;
 			FireSound = WeaponDataRow->FireSound;
 			BoneToHide = WeaponDataRow->BoneToHide;
 			bAutomatic = WeaponDataRow->bAutomatic;
 			Damage = WeaponDataRow->Damage * GetRarityFactor();
 			HeadShotDamage = WeaponDataRow->HeadShotDamage * GetRarityFactor();
+			StunRate = WeaponDataRow->StunRate * GetRarityFactor();
+			StunDurationFactor = WeaponDataRow->StunDurationFactor;
+			BaseSpreadFactor = WeaponDataRow->BaseSpreadFactor;
+			BaseFireSpreadFactor = WeaponDataRow->BaseFireSpreadFactor;
+			ShootTimeDuration = WeaponDataRow->ShootTimeDuration;
 		}
 
 		if (GetMaterialInstance())

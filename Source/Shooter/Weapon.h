@@ -74,6 +74,12 @@ struct FWeaponDataTable : public FTableRowBase
 	class UParticleSystem* MuzzleFlash;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UParticleSystem* ImpactParticles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UParticleSystem* BeamParticles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USoundCue* FireSound;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -89,7 +95,19 @@ struct FWeaponDataTable : public FTableRowBase
 	float HeadShotDamage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float StunRate;
+	float StunRate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.1"))
+	float StunDurationFactor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.5"))
+	float BaseSpreadFactor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.3"))
+	float BaseFireSpreadFactor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.15"))
+	float ShootTimeDuration;
 };
 
 /**
@@ -127,23 +145,23 @@ private:
 	int32 Ammo;
 
 	/** Maximum ammo that our weapon can hold */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	int32 MagazineCapacity;
 
 	/** The type of weapon */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	EWeaponType WeaponType;
 
 	/** The type of ammo for this weapon */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	EAmmoType AmmoType;
 
 	/** FName for the Reload Montage Section */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	FName ReloadMontageSection;
 
 	/** Name for the clip bone */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	FName ClipBoneName;
 
 	/** True when moving the clip while reloading */
@@ -179,6 +197,14 @@ private:
 	/** Particle system spawned at the BarrelSocket */
 	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
 	UParticleSystem* MuzzleFlash;
+
+	/** Particles spawned upon bullet impact */
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* ImpactParticles;
+
+	/** Smoke trail for bullets */
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* BeamParticles;
 
 	/** Sound played when the weapon is fired */
 	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
@@ -223,19 +249,31 @@ private:
 	float RecoilRotation;
 
 	/** True for auto gunfire */
-	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	bool bAutomatic;
 
 	/** Amount of damage caused by a bullet */
-	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	float Damage;
 
 	/** Amount of damage when a bullet hits the head */
-	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	float HeadShotDamage;
 
-	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-		float StunRate;
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float StunRate;
+
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float StunDurationFactor;
+
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float BaseSpreadFactor;
+
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float BaseFireSpreadFactor;
+
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float ShootTimeDuration;
 
 public:
 	/** Adds an impulse to the Weapon */
@@ -255,10 +293,21 @@ public:
 	FORCEINLINE void SetClipBoneName(FName Name) { ClipBoneName = Name; }
 	FORCEINLINE float GetAutoFireRate() const { return AutoFireRate; }
 	FORCEINLINE UParticleSystem* GetMuzzleFlash() const { return MuzzleFlash; }
+	FORCEINLINE UParticleSystem* GetImpactParticles() const { return ImpactParticles; }
+	FORCEINLINE UParticleSystem* GetBeamParticles() const { return BeamParticles; }
+
 	FORCEINLINE USoundCue* GetFireSound() const { return FireSound; }
 	FORCEINLINE bool GetAutomatic() const { return bAutomatic; }
 	FORCEINLINE float GetDamage() const { return Damage; }
 	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; }
+	FORCEINLINE float GetStunRate() const { return StunRate; }
+	FORCEINLINE float GetStunDurationFactor() const { return StunDurationFactor; }
+	FORCEINLINE float GetBaseSpreadFactor() const { return BaseSpreadFactor; }
+	FORCEINLINE float GetBaseFireSpreadFactor() const { return BaseFireSpreadFactor; }
+	FORCEINLINE float GetShootTimeDuration() const { return ShootTimeDuration; }
+
+
+
 
 	void StartSlideTimer();
 

@@ -49,6 +49,10 @@ AShooterCharacter::AShooterCharacter() :
 	CameraZoomedFOV(35.f),
 	CameraCurrentFOV(0.f),
 	ZoomInterpSpeed(20.f),
+	// Crosshair variables
+	CrosshairSpreadMax(16.f),
+	CrosshairW(64.f),
+	CrosshairH(64.f),
 	// Crosshair spread factors
 	CrosshairSpreadMultiplier(0.f),
 	CrosshairVelocityFactor(0.f),
@@ -193,16 +197,21 @@ void AShooterCharacter::BeginPlay()
 	}
 
 	// Spawn the default weapon and attach it to the mesh
-	
-
-	AWeapon* tmpWeapon{};
-	if (HasAuthority()) 
+	if (HasAuthority())
 	{
-		tmpWeapon = SpawnDefaultWeapon();
+		// 각 캐릭터의 디폴트 웨폰을 서버가 생성.
+		EquippedWeapon = SpawnDefaultWeapon();
+		// 각 캐릭터에 이큅드웨폰을 서버가 지정.
+		// 각 캐릭터의 이큅드웨폰가 서버에 노티파이되어있어야함.
+		// EquippedWeapon을 서버가 각 캐릭터에 이큅시킴 
 	}
 
-	ResEquipWeapon(tmpWeapon);
-		
+	Inventory.SetNum(INVENTORY_CAPACITY);
+	Inventory[DefaultSlotIndex] = EquippedWeapon;
+	EquippedWeapon->DisableCustomDepth();
+	EquippedWeapon->DisableGlowMaterial();
+	EquippedWeapon->SetCharacter(this);
+
 	InitializeAmmoMap();
 	GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed;
 
@@ -304,6 +313,8 @@ void AShooterCharacter::FireWeapon()
 		// Subtract 1 from the Weapon's Ammo
 		EquippedWeapon->DecrementAmmo();
 
+		// Camera Shake
+		RecoilCameraShake();
 		//StartFireTimer();
 		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Pistol)
 		{
@@ -321,7 +332,7 @@ bool AShooterCharacter::GetBeamEndLocation(
 
 	// Check for crosshair trace hit
 	FHitResult CrosshairHitResult;
-	bool bCrosshairHit = TraceUnderCrosshairs(CrosshairHitResult, OutBeamLocation, 50'000.f);
+	bool bCrosshairHit = TraceUnderCrosshairs(CrosshairHitResult, OutBeamLocation, 50'000.f, true);
 
 	const FVector WeaponTraceStart{ MuzzleSocketLocation };
 	const FVector StartToEnd{ OutBeamLocation - MuzzleSocketLocation };
@@ -434,7 +445,7 @@ void AShooterCharacter::CalculateCrosshairSpread(float DeltaTime)
 		// Shrink crosshairs a small amount very quickly
 		CrosshairAimFactor = FMath::FInterpTo(
 			CrosshairAimFactor,
-			0.6f,
+			0.5f,
 			DeltaTime,
 			30.f);
 	}
@@ -453,7 +464,7 @@ void AShooterCharacter::CalculateCrosshairSpread(float DeltaTime)
 	{
 		CrosshairShootingFactor = FMath::FInterpTo(
 			CrosshairShootingFactor,
-			0.3f,
+			EquippedWeapon->GetBaseFireSpreadFactor(),
 			DeltaTime,
 			30.f);
 	}
@@ -468,7 +479,7 @@ void AShooterCharacter::CalculateCrosshairSpread(float DeltaTime)
 	}
 
 	CrosshairSpreadMultiplier =
-		0.5f +
+		EquippedWeapon->GetBaseSpreadFactor() +
 		CrosshairVelocityFactor +
 		CrosshairInAirFactor -
 		CrosshairAimFactor +
@@ -540,7 +551,7 @@ void AShooterCharacter::FinishCrosshairBulletFire()
 	SetFiringBullet(false);
 }
 
-bool AShooterCharacter::TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation, float TraceLength)
+bool AShooterCharacter::TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation, float TraceLength, bool bShooting)
 {
 	// Get Viewport Size
 	FVector2D ViewportSize;
@@ -551,6 +562,15 @@ bool AShooterCharacter::TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& 
 
 	// Get screen space location of crosshairs
 	FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
+	if (bShooting)
+	{
+		// SpreadMultiplier == 0 -> Default
+		float OffsetHalf = CrosshairSpreadMultiplier * CrosshairSpreadMax;
+		float OffsetX = FMath::RandRange(-OffsetHalf, OffsetHalf);
+		float OffsetY = FMath::RandRange(-OffsetHalf, OffsetHalf);
+		CrosshairLocation += FVector2D(OffsetX, OffsetY);
+	}
+
 	FVector CrosshairWorldPosition;
 	FVector CrosshairWorldDirection;
 
@@ -592,7 +612,7 @@ void AShooterCharacter::TraceForItems()
 	{
 		FHitResult ItemTraceResult;
 		FVector ItemTraceLocation;
-		TraceUnderCrosshairs(ItemTraceResult, ItemTraceLocation, 300.f);
+		TraceUnderCrosshairs(ItemTraceResult, ItemTraceLocation, 400.f, false);
 		if (ItemTraceResult.bBlockingHit)
 		{
 			TraceHitItem = Cast<AItem>(ItemTraceResult.Actor);
@@ -676,19 +696,25 @@ AWeapon* AShooterCharacter::SpawnDefaultWeapon()
 		AWeapon* DefaultWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
 		if (DefaultWeapon->GetBoneToHide() != FName(""))
 		{
-			DefaultWeapon->GetItemMesh()->HideBoneByName(DefaultWeapon->GetBoneToHide(), EPhysBodyOp::PBO_None);
+			DefaultWeapon->GetItemMesh()->UnHideBoneByName(DefaultWeapon->GetBoneToHide());
 		}
-		DefaultWeapon->SlotIndex = DefaultSlotIndex;
+		DefaultWeapon->SetSlotIndex(DefaultSlotIndex);
 		DefaultWeapon->SetItemRarity(EItemRarity::EIR_Default);
 		DefaultWeapon->SetWeaponType(EWeaponType::EWT_Pistol);
-		
+		if (DefaultWeapon->GetBoneToHide() != FName(""))
+		{
+			DefaultWeapon->GetItemMesh()->HideBoneByName(DefaultWeapon->GetBoneToHide(), EPhysBodyOp::PBO_None);
+		}
 		return DefaultWeapon;
 	}
 
 	return nullptr;
 }
 
-
+void AShooterCharacter::ResSpawnDefaultWeapon_Implementation()
+{
+	EquipWeapon(SpawnDefaultWeapon());
+}
 
 void AShooterCharacter::EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping)
 {
@@ -705,12 +731,12 @@ void AShooterCharacter::EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping)
 
 		if (EquippedWeapon == nullptr)
 		{
-			// 2 == no EquippedWeapon yet. No need to reverse the icon animation
-			EquipItemDelegate.Broadcast(-1, WeaponToEquip->SlotIndex);
+			// -1 == no EquippedWeapon yet. No need to reverse the icon animation
+			EquipItemDelegate.Broadcast(-1, WeaponToEquip->GetSlotIndex());
 		}
 		else if (!bSwapping)
 		{
-			EquipItemDelegate.Broadcast(EquippedWeapon->SlotIndex, WeaponToEquip->SlotIndex);
+			EquipItemDelegate.Broadcast(EquippedWeapon->GetSlotIndex(), WeaponToEquip->GetSlotIndex());
 		}
 
 		// Set EquippedWeapon to the new Weapon
@@ -725,26 +751,9 @@ void AShooterCharacter::EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping)
 			AnimInstance->Montage_JumpToSection(FName("Equip"));
 		}
 		EquippedWeapon->PlayEquipSound(true);
-	}
-	if (EquippedWeapon)
-	{
-		Inventory.SetNum(INVENTORY_CAPACITY);
-		Inventory[DefaultSlotIndex] = EquippedWeapon;
-		EquippedWeapon->DisableCustomDepth();
-		EquippedWeapon->DisableGlowMaterial();
-		EquippedWeapon->SetCharacter(this);
-	}
-}
 
-void AShooterCharacter::ReqEquipWeapon_Implementation(AWeapon* WeaponToEquip, bool bSwapping)
-{
-	//EquipWeapon(WeaponToEquip);
-	ResEquipWeapon(WeaponToEquip);
-}
-
-void AShooterCharacter::ResEquipWeapon_Implementation(AWeapon* WeaponToEquip, bool bSwapping)
-{
-	EquipWeapon(WeaponToEquip);
+		ShootTimeDuration = EquippedWeapon->GetShootTimeDuration();
+	}
 }
 
 void AShooterCharacter::ReqPressSelect_Implementation(AItem* Item)
@@ -766,7 +775,7 @@ void AShooterCharacter::ResPressSelect_Implementation(AItem* Item)
 
 			if (bHasEmptySlot)
 			{
-				Weapon->SlotIndex  = WeaponIndex;
+				Weapon->SetSlotIndex(WeaponIndex);
 				Inventory[WeaponIndex] = Weapon;
 				Weapon->SetItemState(EItemState::EIS_Pickedup);
 			}
@@ -820,7 +829,7 @@ void AShooterCharacter::DropWeapon(int32 SelectedIndex, bool bSwapping)
 		}
 		Inventory[SelectedIndex] = nullptr;
 	}
-	SelectedWeapon->SlotIndex = (-1);
+	SelectedWeapon->SetSlotIndex(-1);
 }
 
 void AShooterCharacter::SelectButtonPressed()
@@ -839,7 +848,7 @@ void AShooterCharacter::SelectButtonReleased()
 
 void AShooterCharacter::SwapWeapon(AWeapon* WeaponToSwap, int32 SelectedIndex)
 {
-	bool bSwapWithEquippedWeapon = (SelectedIndex == EquippedWeapon->SlotIndex);
+	bool bSwapWithEquippedWeapon = (SelectedIndex == EquippedWeapon->GetSlotIndex());
 
 	// TODO:: Pickedup or Equip weapon
 	if (bSwapWithEquippedWeapon) // Swap with Equipped Weapon
@@ -857,7 +866,7 @@ void AShooterCharacter::SwapWeapon(AWeapon* WeaponToSwap, int32 SelectedIndex)
 		WeaponToSwap->SetItemState(EItemState::EIS_Pickedup);
 	}
 	Inventory[SelectedIndex] = WeaponToSwap;
-	WeaponToSwap->SlotIndex = (SelectedIndex);
+	WeaponToSwap->SetSlotIndex(SelectedIndex);
 
 
 	TraceHitItem = nullptr;
@@ -911,11 +920,11 @@ void AShooterCharacter::SendBullet()
 				else
 				{
 					// Spawn default particles
-					if (ImpactParticles)
+					if (EquippedWeapon->GetImpactParticles())
 					{
 						UGameplayStatics::SpawnEmitterAtLocation(
 							GetWorld(),
-							ImpactParticles,
+							EquippedWeapon->GetImpactParticles(),
 							BeamHitResult.Location);
 					}
 				}
@@ -968,11 +977,11 @@ void AShooterCharacter::ResSendBullet_Implementation(const FTransform SocketTran
 		HitEnemy->ShowHitNumber(Damage, BeamHitResult.Location, bHeadShot);
 	}
 
-	if (BeamParticles)
+	if (EquippedWeapon->GetBeamParticles())
 	{
 		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
 			GetWorld(),
-			BeamParticles,
+			EquippedWeapon->GetBeamParticles(),
 			SocketTransform);
 		if (Beam)
 		{
@@ -1086,8 +1095,6 @@ void AShooterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AShooterCharacter, EquippedWeapon);
 	DOREPLIFETIME(AShooterCharacter, CurrentCapsuleHalfHeight);
 	DOREPLIFETIME(AShooterCharacter, ReloadMontage);	
-	DOREPLIFETIME(AShooterCharacter, INVENTORY_CAPACITY);
-	
 }
 
 void AShooterCharacter::SetReplicateMovement(bool bInReplicateMovement)
@@ -1116,8 +1123,6 @@ void AShooterCharacter::ResBulletHit_Implementation(FHitResult BeamHit)
 	IBulletHitInterface* BulletHitinterface = Cast<IBulletHitInterface>(BeamHit.Actor.Get());
 	BulletHitinterface->BulletHit_Implementation(BeamHit, this, GetController());
 }
-
-
 
 void AShooterCharacter::SetFiringBullet_Implementation(bool state)
 {
@@ -1203,6 +1208,10 @@ void AShooterCharacter::SetAiming_Implementation(bool state)
 void AShooterCharacter::ResSetAiming_Implementation(bool state)
 {
 	bAiming = state;
+}
+
+void AShooterCharacter::RecoilCameraShake()
+{
 }
 
 // Called every frame
@@ -1436,7 +1445,7 @@ void AShooterCharacter::PickupAmmo(AAmmo* Ammo)
 		AmmoMap[Ammo->GetAmmoType()] = AmmoCount;
 	}
 
-	if (EquippedWeapon && EquippedWeapon->GetAmmoType() == Ammo->GetAmmoType())
+	if (EquippedWeapon->GetAmmoType() == Ammo->GetAmmoType())
 	{
 		// Check to see if the gun is empty
 		if (EquippedWeapon->GetAmmo() == 0)
@@ -1470,24 +1479,24 @@ void AShooterCharacter::InitializeInterpLocations()
 
 void AShooterCharacter::OneKeyPressed()
 {
-	ExchangeInventoryItems(EquippedWeapon->SlotIndex, 0);
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 0);
 }
 
 void AShooterCharacter::TwoKeyPressed()
 {
-	ExchangeInventoryItems(EquippedWeapon->SlotIndex, 1);
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 1);
 }
 
 void AShooterCharacter::ThreeKeyPressed()
 {
-	ExchangeInventoryItems(EquippedWeapon->SlotIndex, 2);
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 2);
 }
 
 void AShooterCharacter::DropKeyPressed()
 {
 	if (CombatState != ECombatState::ECS_Unoccupied) return;
-	if (!EquippedWeapon || EquippedWeapon->SlotIndex == DefaultSlotIndex) return;
-	DropWeapon(EquippedWeapon->SlotIndex, false);
+	if (!EquippedWeapon || EquippedWeapon->GetSlotIndex() == DefaultSlotIndex) return;
+	DropWeapon(EquippedWeapon->GetSlotIndex(), false);
 }
 
 void AShooterCharacter::ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex)
@@ -1502,7 +1511,7 @@ void AShooterCharacter::ReqExchangeInventoryItems_Implementation(int32 CurrentIt
 
 void AShooterCharacter::ResExchangeInventoryItems_Implementation(int32 CurrentItemIndex, int32 NewItemIndex)
 {
-	bool bCanExchangeItems =
+	const bool bCanExchangeItems =
 		(CurrentItemIndex != NewItemIndex) &&
 		(Inventory[NewItemIndex] != nullptr) &&
 		(CombatState == ECombatState::ECS_Unoccupied || CombatState == ECombatState::ECS_Equipping);
@@ -1528,7 +1537,7 @@ void AShooterCharacter::ResExchangeInventoryItems_Implementation(int32 CurrentIt
 int32 AShooterCharacter::GetChangableInventorySlot(bool& OutHasEmptySlot)
 {
 	
-	int32 ChangableIndex = -1;
+		int32 ChangableIndex = -1;
 	for (int32 i = 0; i < INVENTORY_CAPACITY; i++) // 0, 1, 2
 	{
 		if (Inventory[i] == nullptr)
@@ -1541,7 +1550,7 @@ int32 AShooterCharacter::GetChangableInventorySlot(bool& OutHasEmptySlot)
 	if (ChangableIndex == -1) // Inventory is full!
 	{
 		OutHasEmptySlot = false;
-		ChangableIndex = EquippedWeapon->SlotIndex;
+		ChangableIndex = EquippedWeapon->GetSlotIndex();
 		if (ChangableIndex == DefaultSlotIndex) // if DefaultWeapon is equipped
 		{
 			if (DefaultSlotIndex == 0)

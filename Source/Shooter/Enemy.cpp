@@ -23,9 +23,9 @@ AEnemy::AEnemy() :
 	Health(100.f),
 	MaxHealth(100.f),
 	HealthBarDisplayTime(4.f),
-	bCanHitReact(true),
 	HitReactTimeMin(0.5f),
 	HitReactTimeMax(1.f),
+	bCanHitReact(true),
 	HitNumberDestroyTime(1.5f),
 	bStunned(false),
 	StunResist(0.5f),
@@ -191,8 +191,6 @@ void AEnemy::Die()
 			true);
 		EnemyController->StopMovement();
 	}
-	
-	
 	//ReqDie();
 }
 //
@@ -628,18 +626,17 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 	// Determine whether bullet hit stuns
 	const float Stunned = FMath::FRandRange(0.f, 1.f);
 	const AShooterCharacter* Player = Cast<AShooterCharacter>(DamageCauser);
-	float FinalStunRate;
+	float FinalStunRate =  0.5f - StunResist; // default stun rate
 	if (Player)
 	{
-		FinalStunRate = Player->GetEquippedWeapon()->GetRarityFactor() - StunResist;
+		FinalStunRate = Player->GetEquippedWeapon()->GetStunRate() - StunResist;
+		if (Stunned < FinalStunRate && Player->GetEquippedWeapon() && Player->GetEquippedWeapon()->GetStunDurationFactor() > 0)
+		{
+			// Stun the Enemy
+			SetStunned(true);
+			PlayHitMontage(FName("HitReactFront"), 1 / (Player->GetEquippedWeapon()->GetStunDurationFactor()));
+		}
 	}
-	if (Stunned < FinalStunRate)
-	{
-		// Stun the Enemy
-		PlayHitMontage(FName("HitReactFront"));
-		SetStunned(true);
-	}
-
 	return DamageAmount;
 }
 

@@ -16,6 +16,10 @@
 	],
 	"Plugins": [
 		{
+			"Name": "NiagaraExtras",
+			"Enabled": true
+		},
+		{
 			"Name": "AdvancedSessions",
 			"Enabled": true
 		},
@@ -23,5 +27,12 @@
 			"Name": "AdvancedSteamSessions",
 			"Enabled": true
 		}
+	],
+	"TargetPlatforms": [
+		"Android",
+		"IOS",
+		"Linux",
+		"Mac",
+		"Windows"
 	]
 }

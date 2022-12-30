@@ -19,10 +19,10 @@ AItem::AItem() :
 	ItemRarity(EItemRarity::EIR_Common),
 	ItemState(EItemState::EIS_Pickup),
 	// Item interp variables
-	ZCurveTime(0.7f),
 	ItemInterpStartLocation(FVector(0.f)),
 	CameraTargetLocation(FVector(0.f)),
 	bInterping(false),
+	ZCurveTime(0.7f),
 	ItemInterpX(0.f),
 	ItemInterpY(0.f),
 	InterpInitialYawOffset(0.f),
@@ -62,7 +62,6 @@ AItem::AItem() :
 
 	SetReplicateMovement(bReplicateItem);
 	ItemMesh->SetIsReplicated(true);
-	bReplicates = true;
 	
 }
 
